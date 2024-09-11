@@ -317,8 +317,8 @@ impl eframe::App for App {
         central_panel.show(ctx, |ui| {
             StripBuilder::new(ui)
                 .size(Size::remainder())
-                .size(Size::relative(0.22))
-                .size(Size::relative(0.15))
+                .size(Size::relative(0.20).at_least(120.))
+                .size(Size::relative(0.18).at_least(100.))
                 .vertical(|mut strip| {
                     strip.strip(|builder| {
                         builder.sizes(Size::remainder(), 2).horizontal(|mut strip| {
@@ -416,17 +416,17 @@ impl eframe::App for App {
                                     show_label(ui, "L");
                                     let get_set = |v: Option<f64>| match v {
                                         Some(v) => {
-                                            self.color.lightness = (v / 100.) as f32;
+                                            self.color.lightness = v as f32;
                                             v
                                         }
-                                        None => self.color.lightness as f64 * 100.,
+                                        None => self.color.lightness as f64,
                                     };
                                     ui.add_sized(
                                         input_size,
                                         DragValue::from_get_set(get_set)
-                                            .speed(100. * 0.001)
-                                            .range(0.0..=100.0)
-                                            .max_decimals(2),
+                                            .speed(1. * 0.001)
+                                            .range(0.0..=1.0)
+                                            .max_decimals(4),
                                     );
 
                                     canvas_slider(ui).show(ui, |ui| {
@@ -668,30 +668,34 @@ impl eframe::App for App {
 
                             strip.cell(|ui| {
                                 ui.vertical_centered_justified(|ui| {
-                                    // ui.style_mut().spacing.button_padding = egui::vec2(16.0, 8.0);
-                                    //
                                     ui.add_space(4.0);
                                     ui.style_mut()
                                         .text_styles
                                         .get_mut(&egui::TextStyle::Button)
                                         .unwrap()
-                                        .size = 16.;
-                                    egui::ComboBox::new("format", "Output Format")
-                                        .selected_text(format!("{:?}", &mut self.format))
-                                        .show_ui(ui, |ui| {
-                                            for format in ColorFormat::iter() {
-                                                ui.selectable_value(
-                                                    &mut self.format,
-                                                    format,
-                                                    format.to_string(),
-                                                );
-                                            }
-                                        });
+                                        .size = 20.;
+                                    ui.horizontal(|ui| {
+                                        egui::ComboBox::from_id_source("format")
+                                            .selected_text(format!("{:?}", &mut self.format))
+                                            .show_ui(ui, |ui| {
+                                                for format in ColorFormat::iter() {
+                                                    ui.selectable_value(
+                                                        &mut self.format,
+                                                        format,
+                                                        format.to_string(),
+                                                    );
+                                                }
+                                            });
+
+                                        let label = egui::Label::new("Output Format")
+                                            .wrap_mode(egui::TextWrapMode::Truncate);
+                                        ui.add(label);
+                                    });
 
                                     let button = egui::Button::new(
-                                        RichText::new("DONE").strong().size(24.0),
+                                        RichText::new("DONE").strong().size(30.0),
                                     )
-                                    .min_size(Vec2::new(0., 50.).min(ui.available_size()));
+                                    .min_size(ui.available_size());
                                     ui.add(button);
                                 });
                             });
