@@ -7,11 +7,7 @@ use std::{
 
 use bevy_color::{ColorToComponents, ColorToPacked, LinearRgba, Oklcha, Srgba};
 use eframe::{
-    egui::{
-        self,
-        ahash::{HashMap, HashSet},
-        Color32, DragValue, Pos2, RichText, Stroke, Vec2,
-    },
+    egui::{self, ahash::HashMap, Color32, DragValue, Pos2, RichText, Stroke, Vec2},
     egui_glow,
     glow::{self},
 };
@@ -604,8 +600,6 @@ impl eframe::App for App {
                                     } else {
                                         format_color(*color, fallback, self.format)
                                     };
-
-                                    dbg!(&text);
 
                                     let output = egui::TextEdit::singleline(&mut text)
                                         .margin(6.0)
