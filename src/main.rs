@@ -290,7 +290,7 @@ impl eframe::App for App {
                     Stroke::new(width, color),
                 ));
                 if !name.is_empty() {
-                    let label_center = Pos2::new(pos, rect.bottom() + 10.);
+                    let label_center = Pos2::new(pos, rect.bottom() + 7.);
                     let label_rect =
                         egui::Rect::from_center_size(label_center, egui::vec2(10.0, 10.0));
                     labels.push((label_rect, name.to_owned()));
@@ -304,7 +304,7 @@ impl eframe::App for App {
                 ));
 
                 if !name.is_empty() {
-                    let label_center = Pos2::new(rect.left() - 10., pos - 2.);
+                    let label_center = Pos2::new(rect.left() - 10., pos - 4.);
                     let label_rect =
                         egui::Rect::from_center_size(label_center, egui::vec2(10.0, 10.0));
                     labels.push((label_rect, name.to_owned()));
