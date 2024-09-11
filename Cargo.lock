@@ -1346,7 +1346,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "fast-oklch-picker-nvim"
+name = "fast-oklch-picker"
 version = "0.1.0"
 dependencies = [
  "bevy_color",
