@@ -1,0 +1,16 @@
+[package]
+name = "picker-test2"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy_color = { git = "https://github.com/bevyengine/bevy", rev = "5cfcbf4" }
+const_format = "0.2.33"
+eframe = { version = "0.28.1", default-features = false, features = [
+	"accesskit",
+	"glow",
+	"wayland",
+	"x11",
+	"persistence",
+] }
+enum-map = "2.7.3"
