@@ -210,7 +210,6 @@ const N: &str = r#"(\d+(?:\.?\d*))"#;
 
 static OKLCH_REGEX: Lazy<Regex> = Lazy::new(|| {
     let r = const_format::formatcp!(r#"^oklch\(\s*{N}(%?)\s+{N}\s+{N}\s*(?:\/\s*{N}(%?)\s*)?\)$"#);
-    dbg!(&r);
     Regex::new(r).unwrap()
 });
 
