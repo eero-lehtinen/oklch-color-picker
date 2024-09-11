@@ -96,10 +96,8 @@ float xor(float a, float b) {
 	return 1.;
 }
 
-vec4 blend(vec4 below, vec4 above) {
-	float a_result = above.a + below.a * (1. - above.a);
-
-	return vec4((above.a * above.rgb + below.a * below.rgb * (1. - above.a)) / a_result, a_result);
+vec3 blend(vec3 below, vec4 above) {
+	return above.a * above.rgb + (1.0 - above.a) * below;
 }
 	
 

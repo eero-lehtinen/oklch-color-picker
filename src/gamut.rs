@@ -181,9 +181,9 @@ pub fn gamut_clip_preserve_chroma(rgba: LinearRgba) -> LinearRgba {
     if rgba.red < 1.
         && rgba.green < 1.
         && rgba.blue < 1.
-        && rgba.red > 0.
-        && rgba.green > 0.
-        && rgba.blue > 0.
+        && rgba.red >= 0.
+        && rgba.green >= 0.
+        && rgba.blue >= 0.
     {
         return rgba;
     }

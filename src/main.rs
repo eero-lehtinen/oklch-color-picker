@@ -1,18 +1,29 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::sync::{Arc, Mutex};
-
-use bevy_color::{ColorToComponents, ColorToPacked, Oklcha, Srgba};
-use const_format::concatcp;
-use eframe::{
-    egui::{self, Color32, Mesh, Pos2, Stroke},
-    egui_glow,
-    glow::{self, HasContext},
+use std::{
+    fmt::Display,
+    sync::{Arc, Mutex},
 };
-use enum_map::{enum_map, Enum, EnumMap};
+
+use bevy_color::{ColorToComponents, ColorToPacked, LinearRgba, Oklcha, Srgba};
+use eframe::{
+    egui::{
+        self,
+        ahash::{HashMap, HashSet},
+        Color32, DragValue, Pos2, RichText, Stroke, Vec2,
+    },
+    egui_glow,
+    glow::{self},
+};
+use egui_extras::{Size, StripBuilder};
 use gamut::gamut_clip_preserve_chroma;
+use gl_programs::{GlowProgram, ProgramKind};
+use once_cell::sync::Lazy;
+use regex::Regex;
+use strum::{EnumIter, IntoEnumIterator};
 
 mod gamut;
+mod gl_programs;
 
 fn main() {
     let native_options = eframe::NativeOptions {
@@ -28,458 +39,675 @@ fn main() {
     .unwrap();
 }
 
+fn lerp(v0: f32, v1: f32, t: f32) -> f32 {
+    (1. - t) * v0 + t * v1
+}
+
+fn map(input: f32, from: (f32, f32), to: (f32, f32)) -> f32 {
+    ((to.1 - to.0) * (input - from.0) / (from.1 - from.0) + to.0)
+        .clamp(to.0.min(to.1), to.1.max(to.0))
+}
+
 fn setup_custom_fonts(ctx: &egui::Context) {
     // Start with the default fonts (we will be adding to them rather than replacing them).
     let mut fonts = egui::FontDefinitions::default();
 
-    // Install my own font (maybe supporting non-latin characters).
-    // .ttf and .otf files supported.
     fonts.font_data.insert(
         "my_font".to_owned(),
-        egui::FontData::from_static(include_bytes!("../src/InterVariable.ttf")),
+        egui::FontData::from_static(include_bytes!("../src/Inter-Regular.ttf")),
     );
 
-    // Put my font first (highest priority) for proportional text:
     fonts
         .families
         .entry(egui::FontFamily::Proportional)
         .or_default()
         .insert(0, "my_font".to_owned());
 
-    // Put my font as last fallback for monospace:
     fonts
         .families
         .entry(egui::FontFamily::Monospace)
         .or_default()
         .push("my_font".to_owned());
 
+    ctx.style_mut(|style| {
+        style
+            .text_styles
+            .get_mut(&egui::TextStyle::Body)
+            .unwrap()
+            .size = 16.;
+
+        style
+            .text_styles
+            .get_mut(&egui::TextStyle::Button)
+            .unwrap()
+            .size = 14.;
+        style.spacing.button_padding = egui::vec2(8.0, 4.0);
+    });
+
     // Tell egui to use these fonts:
     ctx.set_fonts(fonts);
 }
 
-#[derive(Enum, Default, Clone, Copy)]
-enum ProgramKind {
-    #[default]
-    Picker,
-    Picker2,
-    Hue,
-    Lightness,
-    Chroma,
-    Alpha,
-    Final,
-}
-
-struct GlowProgram {
-    kind: ProgramKind,
-    program: glow::Program,
-    vertex_array: glow::VertexArray,
-}
-
-impl GlowProgram {
-    fn new(gl: &glow::Context, kind: ProgramKind) -> Self {
-        unsafe {
-            let program = gl.create_program().unwrap();
-            let vert_shader_source = include_str!("./shaders/quad_vert.glsl");
-
-            let frag_shader_source = match kind {
-                ProgramKind::Picker => concat!(
-                    include_str!("shaders/functions.glsl"),
-                    include_str!("shaders/picker_frag.glsl")
-                ),
-                ProgramKind::Picker2 => concat!(
-                    include_str!("shaders/functions.glsl"),
-                    include_str!("shaders/picker2_frag.glsl")
-                ),
-                ProgramKind::Hue => concat!(
-                    include_str!("shaders/functions.glsl"),
-                    include_str!("shaders/hue_frag.glsl")
-                ),
-                ProgramKind::Lightness => concat!(
-                    include_str!("shaders/functions.glsl"),
-                    include_str!("shaders/lightness_frag.glsl")
-                ),
-                ProgramKind::Chroma => concat!(
-                    include_str!("shaders/functions.glsl"),
-                    include_str!("shaders/chroma_frag.glsl")
-                ),
-                ProgramKind::Alpha => concat!(
-                    include_str!("shaders/functions.glsl"),
-                    include_str!("shaders/alpha_frag.glsl")
-                ),
-                ProgramKind::Final => concat!(
-                    include_str!("shaders/functions.glsl"),
-                    include_str!("shaders/final_frag.glsl")
-                ),
-            };
-
-            let shader_sources = [
-                (glow::VERTEX_SHADER, vert_shader_source),
-                (glow::FRAGMENT_SHADER, frag_shader_source),
-            ];
-
-            let shaders: Vec<_> = shader_sources
-                .iter()
-                .map(|(shader_type, shader_source)| {
-                    let shader = gl
-                        .create_shader(*shader_type)
-                        .expect("Cannot create shader");
-                    gl.shader_source(shader, shader_source);
-                    gl.compile_shader(shader);
-                    assert!(
-                        gl.get_shader_compile_status(shader),
-                        "Failed to compile {shader_type}: {}",
-                        gl.get_shader_info_log(shader)
-                    );
-                    gl.attach_shader(program, shader);
-                    shader
-                })
-                .collect();
-
-            gl.link_program(program);
-            assert!(
-                gl.get_program_link_status(program),
-                "{}",
-                gl.get_program_info_log(program)
-            );
-
-            for shader in shaders {
-                gl.detach_shader(program, shader);
-                gl.delete_shader(shader);
-            }
-
-            let vertex_array = gl
-                .create_vertex_array()
-                .expect("Cannot create vertex array");
-
-            Self {
-                kind,
-                program,
-                vertex_array,
-            }
-        }
-    }
-
-    fn destroy(&self, gl: &glow::Context) {
-        unsafe {
-            gl.delete_program(self.program);
-            gl.delete_vertex_array(self.vertex_array);
-        }
-    }
-
-    fn paint(&self, gl: &glow::Context, color: Oklcha, fallback_color: [f32; 4]) {
-        unsafe {
-            let set_uni_f32 = |name: &str, value: f32| {
-                gl.uniform_1_f32(gl.get_uniform_location(self.program, name).as_ref(), value);
-            };
-            gl.use_program(Some(self.program));
-            match self.kind {
-                ProgramKind::Picker => {
-                    set_uni_f32("hue", color.hue);
-                }
-                ProgramKind::Picker2 => {
-                    set_uni_f32("lightness", color.lightness);
-                }
-                ProgramKind::Hue => {}
-                ProgramKind::Lightness => {
-                    set_uni_f32("hue", color.hue);
-                    set_uni_f32("chroma", color.chroma);
-                }
-                ProgramKind::Chroma => {
-                    set_uni_f32("hue", color.hue);
-                    set_uni_f32("lightness", color.lightness);
-                }
-                ProgramKind::Alpha => {
-                    gl.uniform_3_f32_slice(
-                        gl.get_uniform_location(self.program, "color").as_ref(),
-                        &fallback_color[0..3][..],
-                    );
-                }
-
-                ProgramKind::Final => {
-                    gl.uniform_4_f32_slice(
-                        gl.get_uniform_location(self.program, "color").as_ref(),
-                        &fallback_color[..],
-                    );
-                }
-            }
-            gl.bind_vertex_array(Some(self.vertex_array));
-
-            gl.draw_arrays(glow::TRIANGLE_STRIP, 0, 4);
-        }
-    }
-}
-
-fn lerp(v0: f32, v1: f32, t: f32) -> f32 {
-    (1. - t) * v0 + t * v1
-}
-
-fn map(input: f32, from: (f32, f32), to: (f32, f32)) -> f32 {
-    (to.1 - to.0) * (input - from.0) / (from.1 - from.0) + to.0
-}
-
 struct App {
+    previous_color: Oklcha,
     color: Oklcha,
-    programs: EnumMap<ProgramKind, Arc<Mutex<GlowProgram>>>,
+    format: ColorFormat,
+    programs: HashMap<ProgramKind, Arc<Mutex<GlowProgram>>>,
+    input_text: HashMap<u8, String>,
 }
 
 impl App {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
         setup_custom_fonts(&cc.egui_ctx);
 
-        // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
-        // Restore app state using cc.storage (requires the "persistence" feature).
-        // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
-        // for e.g. egui::PaintCallback.
         let gl = cc.gl.as_ref().unwrap();
 
-        let prog = |kind: ProgramKind| Arc::new(Mutex::new(GlowProgram::new(gl, kind)));
         Self {
+            previous_color: Oklcha::new(0.8, 0.1, 0.0, 1.0),
             color: Oklcha::new(0.8, 0.1, 0.0, 1.0),
-            programs: enum_map! {
-                ProgramKind::Picker => prog(ProgramKind::Picker),
-                ProgramKind::Picker2 => prog(ProgramKind::Picker2),
-                ProgramKind::Hue => prog(ProgramKind::Hue),
-                ProgramKind::Lightness => prog(ProgramKind::Lightness),
-                ProgramKind::Chroma => prog(ProgramKind::Chroma),
-                ProgramKind::Alpha => prog(ProgramKind::Alpha),
-                ProgramKind::Final => prog(ProgramKind::Final),
-            },
+            format: ColorFormat::Oklch,
+            programs: ProgramKind::iter()
+                .map(|kind| (kind, Arc::new(Mutex::new(GlowProgram::new(gl, kind)))))
+                .collect(),
+            input_text: Default::default(),
         }
-    }
-
-    fn ui(&mut self, ui: &mut egui::Ui) {
-        let fallback_color =
-            Srgba::from(gamut_clip_preserve_chroma(self.color.into())).to_f32_array();
-
-        ui.vertical_centered_justified(|ui| {
-            ui.horizontal(|ui| {});
-            egui::Frame::canvas(ui.style()).show(ui, |ui| {
-                let size = egui::Vec2::new(ui.available_width(), 600.);
-                let (rect, response) = ui.allocate_at_least(size, egui::Sense::drag());
-
-                if let Some(pos) = response.interact_pointer_pos() {
-                    self.color.lightness =
-                        map(pos.x, (rect.left(), rect.right()), (0., 1.)).clamp(0.0, 1.0);
-                    self.color.chroma = map(pos.y, (rect.top(), rect.bottom()), (CHROMA_MAX, 0.))
-                        .clamp(0.0, CHROMA_MAX);
-                }
-
-                let color = self.color;
-
-                let picker = Arc::clone(&self.programs[ProgramKind::Picker]);
-
-                let callback = egui::PaintCallback {
-                    rect,
-                    callback: Arc::new(egui_glow::CallbackFn::new(move |_info, painter| {
-                        picker
-                            .lock()
-                            .unwrap()
-                            .paint(painter.gl(), color, fallback_color);
-                    })),
-                };
-                ui.painter().add(callback);
-
-                let painter = ui.painter_at(rect);
-
-                let line_x = lerp(rect.left(), rect.right(), color.lightness);
-                let line_y = lerp(rect.bottom(), rect.top(), color.chroma / CHROMA_MAX);
-
-                painter.add(egui::Shape::line_segment(
-                    [
-                        Pos2::new(line_x, rect.top()),
-                        Pos2::new(line_x, rect.bottom()),
-                    ],
-                    Stroke::new(1.0, LINE_COLOR),
-                ));
-                painter.add(egui::Shape::line_segment(
-                    [
-                        Pos2::new(rect.left(), line_y),
-                        Pos2::new(rect.right(), line_y),
-                    ],
-                    Stroke::new(1.0, LINE_COLOR),
-                ));
-            });
-
-            egui::Frame::canvas(ui.style()).show(ui, |ui| {
-                let (rect, response) =
-                    ui.allocate_exact_size(egui::Vec2::new(600.0, 50.), egui::Sense::drag());
-
-                if let Some(pos) = response.interact_pointer_pos() {
-                    self.color.lightness =
-                        map(pos.x, (rect.left(), rect.right()), (0., 1.)).clamp(0.0, 1.0);
-                }
-
-                let color = self.color;
-
-                let hue = Arc::clone(&self.programs[ProgramKind::Lightness]);
-
-                let callback = egui::PaintCallback {
-                    rect,
-                    callback: Arc::new(egui_glow::CallbackFn::new(move |_info, painter| {
-                        hue.lock()
-                            .unwrap()
-                            .paint(painter.gl(), color, fallback_color);
-                    })),
-                };
-                ui.painter().add(callback);
-
-                let line_x = lerp(rect.left(), rect.right(), color.lightness);
-
-                ui.painter().add(egui::Shape::line_segment(
-                    [
-                        Pos2::new(line_x, rect.top()),
-                        Pos2::new(line_x, rect.bottom()),
-                    ],
-                    Stroke::new(2.0, LINE_COLOR),
-                ));
-            });
-
-            egui::Frame::canvas(ui.style()).show(ui, |ui| {
-                let (rect, response) =
-                    ui.allocate_exact_size(egui::Vec2::new(600.0, 50.), egui::Sense::drag());
-
-                if let Some(pos) = response.interact_pointer_pos() {
-                    self.color.chroma = map(pos.x, (rect.left(), rect.right()), (0., CHROMA_MAX))
-                        .clamp(0.0, CHROMA_MAX);
-                }
-
-                let color = self.color;
-
-                let hue = Arc::clone(&self.programs[ProgramKind::Chroma]);
-
-                let callback = egui::PaintCallback {
-                    rect,
-                    callback: Arc::new(egui_glow::CallbackFn::new(move |_info, painter| {
-                        hue.lock()
-                            .unwrap()
-                            .paint(painter.gl(), color, fallback_color);
-                    })),
-                };
-                ui.painter().add(callback);
-
-                let line_x = lerp(rect.left(), rect.right(), color.chroma / CHROMA_MAX);
-
-                ui.painter().add(egui::Shape::line_segment(
-                    [
-                        Pos2::new(line_x, rect.top()),
-                        Pos2::new(line_x, rect.bottom()),
-                    ],
-                    Stroke::new(2.0, LINE_COLOR),
-                ));
-            });
-
-            egui::Frame::canvas(ui.style()).show(ui, |ui| {
-                let (rect, response) =
-                    ui.allocate_exact_size(egui::Vec2::new(600.0, 50.), egui::Sense::drag());
-
-                if let Some(pos) = response.interact_pointer_pos() {
-                    self.color.hue =
-                        map(pos.x, (rect.left(), rect.right()), (0., 360.)).clamp(0.0, 360.);
-                }
-
-                let color = self.color;
-
-                let hue = Arc::clone(&self.programs[ProgramKind::Hue]);
-
-                let callback = egui::PaintCallback {
-                    rect,
-                    callback: Arc::new(egui_glow::CallbackFn::new(move |_info, painter| {
-                        hue.lock()
-                            .unwrap()
-                            .paint(painter.gl(), color, fallback_color);
-                    })),
-                };
-                ui.painter().add(callback);
-
-                let line_x = lerp(rect.left(), rect.right(), color.hue / 360.);
-
-                ui.painter().add(egui::Shape::line_segment(
-                    [
-                        Pos2::new(line_x, rect.top()),
-                        Pos2::new(line_x, rect.bottom()),
-                    ],
-                    Stroke::new(2.0, LINE_COLOR),
-                ));
-            });
-
-            egui::Frame::canvas(ui.style()).show(ui, |ui| {
-                let (rect, response) =
-                    ui.allocate_exact_size(egui::Vec2::new(600.0, 50.), egui::Sense::drag());
-
-                if let Some(pos) = response.interact_pointer_pos() {
-                    self.color.alpha =
-                        map(pos.x, (rect.left(), rect.right()), (0., 1.)).clamp(0.0, 1.0);
-                }
-
-                let color = self.color;
-
-                let hue = Arc::clone(&self.programs[ProgramKind::Alpha]);
-
-                let callback = egui::PaintCallback {
-                    rect,
-                    callback: Arc::new(egui_glow::CallbackFn::new(move |_info, painter| {
-                        hue.lock()
-                            .unwrap()
-                            .paint(painter.gl(), color, fallback_color);
-                    })),
-                };
-                ui.painter().add(callback);
-
-                let line_x = lerp(rect.left(), rect.right(), color.alpha);
-
-                ui.painter().add(egui::Shape::line_segment(
-                    [
-                        Pos2::new(line_x, rect.top()),
-                        Pos2::new(line_x, rect.bottom()),
-                    ],
-                    Stroke::new(2.0, LINE_COLOR),
-                ));
-            });
-
-            egui::Frame::canvas(ui.style()).show(ui, |ui| {
-                let (rect, _) =
-                    ui.allocate_exact_size(egui::Vec2::new(600.0, 50.), egui::Sense::drag());
-
-                let color = self.color;
-                let hue = Arc::clone(&self.programs[ProgramKind::Final]);
-                let callback = egui::PaintCallback {
-                    rect,
-                    callback: Arc::new(egui_glow::CallbackFn::new(move |_info, painter| {
-                        hue.lock()
-                            .unwrap()
-                            .paint(painter.gl(), color, fallback_color);
-                    })),
-                };
-                ui.painter().add(callback);
-            });
-
-            // ctx.send_viewport_cmd(ViewportCommand::Close);
-            //
-            let color_text = format!(
-                "oklch({:.2}% {:.4} {:.2}{})",
-                self.color.lightness * 100.,
-                self.color.chroma,
-                self.color.hue,
-                if self.color.alpha == 1. {
-                    String::new()
-                } else {
-                    format!(" / {:.2}%", self.color.alpha * 100.)
-                },
-            );
-            ui.label(color_text);
-            ui.label(Srgba::from_f32_array(fallback_color).to_hex());
-        });
     }
 }
 
 const CHROMA_MAX: f32 = 0.33;
 
-const LINE_COLOR: Color32 = Color32::from_gray(10);
+const LINE_COLOR: Color32 = Color32::from_gray(30);
+const LINE_COLOR2: Color32 = Color32::from_gray(220);
+
+fn canvas_picker(ui: &mut egui::Ui) -> egui::Frame {
+    egui::Frame::canvas(ui.style())
+        .inner_margin(0.0)
+        .outer_margin(egui::Margin {
+            bottom: 16.,
+            ..Default::default()
+        })
+        .rounding(0.0)
+        .stroke(Stroke::NONE)
+}
+
+fn canvas_slider(ui: &mut egui::Ui) -> egui::Frame {
+    egui::Frame::canvas(ui.style())
+        .inner_margin(0.0)
+        .outer_margin(egui::Margin {
+            left: 10.,
+            right: 4.,
+            bottom: 4.,
+            top: 4.,
+        })
+        .rounding(0.0)
+        .stroke(Stroke::NONE)
+}
+
+fn canvas_final(ui: &mut egui::Ui) -> egui::Frame {
+    egui::Frame::canvas(ui.style())
+        .inner_margin(0.0)
+        .outer_margin(egui::Margin {
+            left: 0.,
+            right: 0.,
+            bottom: 4.,
+            top: 4.,
+        })
+        .rounding(0.0)
+        .stroke(Stroke::NONE)
+}
+
+fn is_fallback(color: Oklcha) -> bool {
+    LinearRgba::from(color)
+        .to_f32_array()
+        .iter()
+        .any(|x| *x < 0. || *x > 1.)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, EnumIter)]
+enum ColorFormat {
+    Oklch,
+    Hex,
+    Rgba,
+}
+
+impl Display for ColorFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ColorFormat::Oklch => write!(f, "Oklch"),
+            ColorFormat::Hex => write!(f, "Hex"),
+            ColorFormat::Rgba => write!(f, "Rgba"),
+        }
+    }
+}
+
+fn float_to_decimal(v: f32, decimals: i32) -> f32 {
+    let factor = 10.0f32.powi(decimals);
+    (v * factor).round() / factor
+}
+
+fn format_color(color: Oklcha, fallback: Srgba, format: ColorFormat) -> String {
+    match format {
+        ColorFormat::Oklch => {
+            format!(
+                "oklch({} {} {} / {})",
+                float_to_decimal(color.lightness, 4),
+                float_to_decimal(color.chroma, 4),
+                float_to_decimal(color.hue, 2),
+                float_to_decimal(color.alpha, 4)
+            )
+        }
+        ColorFormat::Hex => fallback.to_hex(),
+        ColorFormat::Rgba => {
+            let c = fallback.to_u8_array_no_alpha();
+            format!(
+                "rgba({}, {}, {}, {})",
+                c[0],
+                c[1],
+                c[2],
+                float_to_decimal(color.alpha, 2)
+            )
+        }
+    }
+}
+
+const N: &str = r#"(\d+(?:\.?\d*))"#;
+
+static OKLCH_REGEX: Lazy<Regex> = Lazy::new(|| {
+    let r = const_format::formatcp!(r#"^oklch\(\s*{N}(%?)\s+{N}\s+{N}\s*(?:\/\s*{N}(%?)\s*)?\)$"#);
+    dbg!(&r);
+    Regex::new(r).unwrap()
+});
+
+fn parse_color(s: &str, format: ColorFormat) -> Option<Oklcha> {
+    match format {
+        ColorFormat::Oklch => {
+            let caps = OKLCH_REGEX.captures(s)?;
+            let mut lightness = caps.get(1)?.as_str().parse::<f32>().ok()?;
+            let percent_sign = caps.get(2)?.as_str();
+            if !percent_sign.is_empty() {
+                lightness /= 100.;
+            }
+            let chroma = caps.get(3)?.as_str().parse::<f32>().ok()?;
+            let hue = caps.get(4)?.as_str().parse::<f32>().ok()?;
+            let mut alpha = caps
+                .get(5)
+                .map_or(Some(1.), |c| c.as_str().parse::<f32>().ok())?;
+            let percent_sign = caps.get(6).map_or("", |c| c.as_str());
+            if !percent_sign.is_empty() {
+                alpha /= 100.;
+            }
+            Some(Oklcha::new(lightness, chroma, hue, alpha))
+        }
+        ColorFormat::Hex => Some(Oklcha::default()),
+        ColorFormat::Rgba => Some(Oklcha::default()),
+    }
+}
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            self.ui(ui);
+        let frame = egui::Frame::central_panel(&ctx.style())
+            .inner_margin(20.0)
+            .stroke(Stroke::NONE);
+
+        let central_panel = egui::CentralPanel::default().frame(frame);
+
+        let fallback_color = Srgba::from(gamut_clip_preserve_chroma(self.color.into()));
+
+        let fallback_u8 = fallback_color.to_u8_array_no_alpha();
+        let fallback_egui_color =
+            egui::Color32::from_rgb(fallback_u8[0], fallback_u8[1], fallback_u8[2]);
+
+        let previous_fallback_color =
+            Srgba::from(gamut_clip_preserve_chroma(self.previous_color.into()));
+
+        let glow_paint = |ui: &mut egui::Ui, program: ProgramKind, color: Oklcha, width: f32| {
+            let p = Arc::clone(&self.programs[&program]);
+            let cb = egui::PaintCallback {
+                rect: ui.min_rect(),
+                callback: Arc::new(egui_glow::CallbackFn::new(move |_info, painter| {
+                    p.lock().unwrap().paint(
+                        painter.gl(),
+                        color,
+                        fallback_color.to_f32_array(),
+                        previous_fallback_color.to_f32_array(),
+                        width,
+                    );
+                })),
+            };
+            ui.painter().add(cb);
+        };
+
+        let draw_line = |ui: &mut egui::Ui,
+                         vertical: bool,
+                         wide: bool,
+                         rect: egui::Rect,
+                         pos: f32,
+                         name: &str,
+                         labels: &mut Vec<(egui::Rect, String)>| {
+            let width = if wide { 2. } else { 1. };
+            let color = LINE_COLOR;
+            if vertical {
+                let painter = ui.painter_at(rect);
+                let pos = lerp(rect.left(), rect.right(), pos);
+                painter.add(egui::Shape::line_segment(
+                    [Pos2::new(pos, rect.top()), Pos2::new(pos, rect.bottom())],
+                    Stroke::new(width, color),
+                ));
+                if !name.is_empty() {
+                    let label_center = Pos2::new(pos, rect.bottom() + 10.);
+                    let label_rect =
+                        egui::Rect::from_center_size(label_center, egui::vec2(10.0, 10.0));
+                    labels.push((label_rect, name.to_owned()));
+                }
+            } else {
+                let painter = ui.painter_at(rect);
+                let pos = lerp(rect.bottom(), rect.top(), pos);
+                painter.add(egui::Shape::line_segment(
+                    [Pos2::new(rect.left(), pos), Pos2::new(rect.right(), pos)],
+                    Stroke::new(width, color),
+                ));
+
+                if !name.is_empty() {
+                    let label_center = Pos2::new(rect.left() - 10., pos - 2.);
+                    let label_rect =
+                        egui::Rect::from_center_size(label_center, egui::vec2(10.0, 10.0));
+                    labels.push((label_rect, name.to_owned()));
+                }
+            }
+        };
+
+        let mut labels = Vec::new();
+
+        central_panel.show(ctx, |ui| {
+            StripBuilder::new(ui)
+                .size(Size::remainder())
+                .size(Size::relative(0.22))
+                .size(Size::relative(0.15))
+                .vertical(|mut strip| {
+                    strip.strip(|builder| {
+                        builder.sizes(Size::remainder(), 2).horizontal(|mut strip| {
+                            strip.cell(|ui| {
+                                canvas_picker(ui).show(ui, |ui| {
+                                    let (rect, response) = ui.allocate_exact_size(
+                                        ui.available_size(),
+                                        egui::Sense::drag(),
+                                    );
+
+                                    if let Some(pos) = response.interact_pointer_pos() {
+                                        self.color.lightness =
+                                            map(pos.x, (rect.left(), rect.right()), (0., 1.));
+                                        self.color.chroma = map(
+                                            pos.y,
+                                            (rect.top(), rect.bottom()),
+                                            (CHROMA_MAX, 0.),
+                                        );
+                                    }
+
+                                    glow_paint(
+                                        ui,
+                                        ProgramKind::Picker,
+                                        self.color,
+                                        rect.aspect_ratio(),
+                                    );
+
+                                    let l = self.color.lightness;
+                                    draw_line(ui, true, false, rect, l, "L", &mut labels);
+                                    let c = self.color.chroma / CHROMA_MAX;
+                                    draw_line(ui, false, false, rect, c, "C", &mut labels);
+                                });
+                            });
+
+                            strip.cell(|ui| {
+                                canvas_picker(ui).show(ui, |ui| {
+                                    let (rect, response) = ui.allocate_exact_size(
+                                        ui.available_size(),
+                                        egui::Sense::drag(),
+                                    );
+
+                                    if let Some(pos) = response.interact_pointer_pos() {
+                                        self.color.hue =
+                                            map(pos.x, (rect.left(), rect.right()), (0., 360.));
+                                        self.color.chroma = map(
+                                            pos.y,
+                                            (rect.top(), rect.bottom()),
+                                            (CHROMA_MAX, 0.),
+                                        );
+                                    }
+
+                                    glow_paint(
+                                        ui,
+                                        ProgramKind::Picker2,
+                                        self.color,
+                                        rect.aspect_ratio(),
+                                    );
+
+                                    let h = self.color.hue / 360.;
+                                    draw_line(ui, true, false, rect, h, "H", &mut labels);
+                                    let c = self.color.chroma / CHROMA_MAX;
+                                    draw_line(ui, false, false, rect, c, "", &mut labels);
+                                });
+                            });
+                        });
+                    });
+
+                    strip.strip(|builder| {
+                        let draw_slider_line = |ui: &mut egui::Ui, rect: egui::Rect, pos: f32| {
+                            let center = Pos2::new(
+                                lerp(rect.left(), rect.right(), pos),
+                                rect.top() + rect.height() / 2.,
+                            );
+
+                            let painter = ui.painter();
+
+                            painter.rect(
+                                egui::Rect::from_center_size(
+                                    center,
+                                    egui::vec2(8., rect.height() + 4.),
+                                ),
+                                0.,
+                                fallback_egui_color,
+                                Stroke::new(2.0, LINE_COLOR2),
+                            );
+                        };
+                        let input_size = Vec2::new(66., 26.);
+                        let show_label = |ui: &mut egui::Ui, label: &str| {
+                            let label = egui::Label::new(label);
+                            ui.add_sized(Vec2::new(10., 26.), label);
+                        };
+                        builder.sizes(Size::remainder(), 4).vertical(|mut strip| {
+                            strip.cell(|ui| {
+                                ui.horizontal_centered(|ui| {
+                                    show_label(ui, "L");
+                                    let get_set = |v: Option<f64>| match v {
+                                        Some(v) => {
+                                            self.color.lightness = (v / 100.) as f32;
+                                            v
+                                        }
+                                        None => self.color.lightness as f64 * 100.,
+                                    };
+                                    ui.add_sized(
+                                        input_size,
+                                        DragValue::from_get_set(get_set)
+                                            .speed(100. * 0.001)
+                                            .range(0.0..=100.0)
+                                            .max_decimals(2),
+                                    );
+
+                                    canvas_slider(ui).show(ui, |ui| {
+                                        let (rect, response) = ui.allocate_exact_size(
+                                            ui.available_size(),
+                                            egui::Sense::drag(),
+                                        );
+
+                                        if let Some(pos) = response.interact_pointer_pos() {
+                                            self.color.lightness =
+                                                map(pos.x, (rect.left(), rect.right()), (0., 1.));
+                                        }
+
+                                        glow_paint(
+                                            ui,
+                                            ProgramKind::Lightness,
+                                            self.color,
+                                            rect.aspect_ratio(),
+                                        );
+                                        draw_slider_line(ui, rect, self.color.lightness);
+                                    });
+                                });
+                            });
+                            strip.cell(|ui| {
+                                ui.horizontal_centered(|ui| {
+                                    show_label(ui, "C");
+                                    let get_set = |v: Option<f64>| match v {
+                                        Some(v) => {
+                                            self.color.chroma = v as f32;
+                                            v
+                                        }
+                                        None => self.color.chroma as f64,
+                                    };
+                                    ui.add_sized(
+                                        input_size,
+                                        DragValue::from_get_set(get_set)
+                                            .speed(CHROMA_MAX * 0.001)
+                                            .range(0.0..=CHROMA_MAX)
+                                            .max_decimals(4),
+                                    );
+                                    canvas_slider(ui).show(ui, |ui| {
+                                        let (rect, response) = ui.allocate_exact_size(
+                                            ui.available_size(),
+                                            egui::Sense::drag(),
+                                        );
+
+                                        if let Some(pos) = response.interact_pointer_pos() {
+                                            self.color.chroma = map(
+                                                pos.x,
+                                                (rect.left(), rect.right()),
+                                                (0., CHROMA_MAX),
+                                            );
+                                        }
+
+                                        glow_paint(
+                                            ui,
+                                            ProgramKind::Chroma,
+                                            self.color,
+                                            rect.aspect_ratio(),
+                                        );
+                                        draw_slider_line(ui, rect, self.color.chroma / CHROMA_MAX);
+                                    });
+                                });
+                            });
+
+                            strip.cell(|ui| {
+                                ui.horizontal_centered(|ui| {
+                                    show_label(ui, "H");
+                                    let get_set = |v: Option<f64>| match v {
+                                        Some(v) => {
+                                            self.color.hue = v as f32;
+                                            v
+                                        }
+                                        None => self.color.hue as f64,
+                                    };
+                                    ui.add_sized(
+                                        input_size,
+                                        DragValue::from_get_set(get_set)
+                                            .speed(360. * 0.001)
+                                            .range(0.0..=360.0)
+                                            .max_decimals(2),
+                                    );
+
+                                    canvas_slider(ui).show(ui, |ui| {
+                                        let (rect, response) = ui.allocate_exact_size(
+                                            ui.available_size(),
+                                            egui::Sense::drag(),
+                                        );
+
+                                        if let Some(pos) = response.interact_pointer_pos() {
+                                            self.color.hue =
+                                                map(pos.x, (rect.left(), rect.right()), (0., 360.));
+                                        }
+
+                                        glow_paint(
+                                            ui,
+                                            ProgramKind::Hue,
+                                            self.color,
+                                            rect.aspect_ratio(),
+                                        );
+                                        draw_slider_line(ui, rect, self.color.hue / 360.);
+                                    });
+                                });
+                            });
+
+                            strip.cell(|ui| {
+                                ui.horizontal_centered(|ui| {
+                                    show_label(ui, "A");
+                                    let get_set = |v: Option<f64>| match v {
+                                        Some(v) => {
+                                            self.color.alpha = v as f32;
+                                            v
+                                        }
+                                        None => self.color.alpha as f64,
+                                    };
+                                    ui.add_sized(
+                                        input_size,
+                                        DragValue::from_get_set(get_set)
+                                            .speed(1. * 0.001)
+                                            .range(0.0..=1.0)
+                                            .max_decimals(2),
+                                    );
+                                    canvas_slider(ui).show(ui, |ui| {
+                                        let (rect, response) = ui.allocate_exact_size(
+                                            ui.available_size(),
+                                            egui::Sense::drag(),
+                                        );
+
+                                        if let Some(pos) = response.interact_pointer_pos() {
+                                            self.color.alpha =
+                                                map(pos.x, (rect.left(), rect.right()), (0., 1.));
+                                        }
+
+                                        glow_paint(
+                                            ui,
+                                            ProgramKind::Alpha,
+                                            self.color,
+                                            rect.aspect_ratio(),
+                                        );
+                                        draw_slider_line(ui, rect, self.color.alpha);
+                                    });
+                                });
+                            });
+                        });
+                    });
+
+                    strip.strip(|builder| {
+                        builder.sizes(Size::remainder(), 3).horizontal(|mut strip| {
+                            let rect_allocate = |ui: &mut egui::Ui| {
+                                let (rect, _) = ui.allocate_exact_size(
+                                    Vec2::new(ui.available_width(), ui.available_height() / 1.8),
+                                    egui::Sense::drag(),
+                                );
+                                rect
+                            };
+
+                            let mut show_color_edit =
+                                |ui: &mut egui::Ui, color: &mut Oklcha, fallback: Srgba, id: u8| {
+                                    let mut text = if let Some(text) = self.input_text.get(&id) {
+                                        if let Some(c) = parse_color(text, self.format) {
+                                            *color = c;
+                                        } else {
+                                            ui.style_mut().visuals.selection.stroke =
+                                                egui::Stroke::new(
+                                                    2.0,
+                                                    egui::Color32::from_hex("#ce3c47").unwrap(),
+                                                );
+                                        }
+
+                                        text.clone()
+                                    } else {
+                                        format_color(*color, fallback, self.format)
+                                    };
+
+                                    dbg!(&text);
+
+                                    let output = egui::TextEdit::singleline(&mut text)
+                                        .margin(6.0)
+                                        .min_size(Vec2::new(ui.available_width(), 0.))
+                                        .show(ui);
+
+                                    if output.response.has_focus() {
+                                        self.input_text.insert(id, text.clone());
+                                    } else {
+                                        self.input_text.remove(&id);
+                                    }
+                                };
+
+                            strip.cell(|ui| {
+                                ui.vertical(|ui| {
+                                    canvas_final(ui).show(ui, |ui| {
+                                        let rect = rect_allocate(ui);
+                                        glow_paint(
+                                            ui,
+                                            ProgramKind::FinalPrevious,
+                                            self.color,
+                                            rect.aspect_ratio(),
+                                        );
+                                    });
+
+                                    show_color_edit(
+                                        ui,
+                                        &mut self.previous_color,
+                                        previous_fallback_color,
+                                        0,
+                                    );
+                                    ui.label(format!(
+                                        "Previous Color{}",
+                                        if is_fallback(self.previous_color) {
+                                            " (fallback)"
+                                        } else {
+                                            ""
+                                        }
+                                    ));
+                                });
+                            });
+
+                            strip.cell(|ui| {
+                                ui.vertical(|ui| {
+                                    canvas_final(ui).show(ui, |ui| {
+                                        let rect = rect_allocate(ui);
+                                        glow_paint(
+                                            ui,
+                                            ProgramKind::Final,
+                                            self.color,
+                                            rect.aspect_ratio(),
+                                        );
+                                    });
+
+                                    show_color_edit(ui, &mut self.color, fallback_color, 1);
+                                    ui.label(format!(
+                                        "New Color{}",
+                                        if is_fallback(self.color) {
+                                            " (fallback)"
+                                        } else {
+                                            ""
+                                        }
+                                    ));
+                                });
+                            });
+
+                            strip.cell(|ui| {
+                                ui.vertical_centered_justified(|ui| {
+                                    // ui.style_mut().spacing.button_padding = egui::vec2(16.0, 8.0);
+                                    //
+                                    ui.add_space(4.0);
+                                    ui.style_mut()
+                                        .text_styles
+                                        .get_mut(&egui::TextStyle::Button)
+                                        .unwrap()
+                                        .size = 16.;
+                                    egui::ComboBox::new("format", "Output Format")
+                                        .selected_text(format!("{:?}", &mut self.format))
+                                        .show_ui(ui, |ui| {
+                                            for format in ColorFormat::iter() {
+                                                ui.selectable_value(
+                                                    &mut self.format,
+                                                    format,
+                                                    format.to_string(),
+                                                );
+                                            }
+                                        });
+
+                                    let button = egui::Button::new(
+                                        RichText::new("DONE").strong().size(24.0),
+                                    )
+                                    .min_size(Vec2::new(0., 50.).min(ui.available_size()));
+                                    ui.add(button);
+                                });
+                            });
+                        });
+                    });
+                });
+
+            for (rect, label) in labels {
+                ui.put(rect, egui::Label::new(RichText::from(label)));
+            }
         });
     }
 
@@ -489,5 +717,53 @@ impl eframe::App for App {
                 prog.lock().unwrap().destroy(gl);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn num_test1() {
+        let r = Regex::new(N).unwrap();
+        assert_eq!(r.captures("0.1").unwrap().get(0).unwrap().as_str(), "0.1");
+    }
+
+    #[test]
+    fn num_test2() {
+        let r = Regex::new(N).unwrap();
+        assert_eq!(r.captures("0.").unwrap().get(0).unwrap().as_str(), "0.");
+    }
+
+    #[test]
+    fn test1() {
+        assert_eq!(
+            parse_color("oklch(0. 0.1 0.2/0.3)", ColorFormat::Oklch),
+            Some(Oklcha::new(0., 0.1, 0.2, 0.3))
+        );
+    }
+
+    #[test]
+    fn test2() {
+        assert_eq!(
+            parse_color("oklch( 50.% 0. 0.2 / 2% )", ColorFormat::Oklch),
+            Some(Oklcha::new(0.5, 0., 0.2, 0.02))
+        );
+    }
+
+    #[test]
+    fn test3() {
+        assert_eq!(
+            parse_color("oklch(1 1 1)", ColorFormat::Oklch),
+            Some(Oklcha::new(1., 1., 1., 1.))
+        );
+    }
+
+    #[test]
+    fn test4() {
+        assert_eq!(
+            parse_color("oklch(50% 0.1 0.2 /)", ColorFormat::Oklch),
+            None
+        );
     }
 }

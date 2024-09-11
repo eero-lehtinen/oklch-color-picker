@@ -6,11 +6,13 @@ uniform vec3 color;
 void main() {
 	float alpha = uv.x;
 
-	float checkerboard = xor(floor(mod((uv.x + 0.08) * 100., 2.)), floor(mod((uv.y + 0.11) * 9., 2.)));
+	float size = 0.2;
+	vec2 pos = floor((uv2 + 0.1) / size);
+	float mask = mod(pos.x + mod(pos.y, 2.), 2.);
 
-	vec4 cb = vec4(vec3(mix(BG, vec3(0.3), checkerboard)), 1.);
+	vec3 cb = vec3(mix(vec3(0.11), vec3(0.3), mask));
 
-	vec4 color = vec4(vec3(color.rgb), alpha);
+	vec4 color = vec4(color, alpha);
 
-    FragColor = blend(cb, color);
+    FragColor = vec4(blend(cb, color), 1.0);
 }
