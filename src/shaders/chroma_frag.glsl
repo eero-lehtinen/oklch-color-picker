@@ -8,9 +8,9 @@ uniform float lightness;
 void main() {
 	float chroma = uv.x * 0.33;
 
-	vec3 hcl = vec3(hue / 360., chroma, lightness);
+	vec3 lch = vec3(lightness, chroma, hue / 360.);
 	bool valid;
-	vec3 rgb = hcl2rgb(hcl, valid);
+	vec3 rgb = oklch_to_srgb(lch, valid);
 
 	vec3 color = valid ? rgb : BG;
 

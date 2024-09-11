@@ -11,9 +11,9 @@ void main() {
 	
 	float hue = uv.x;
 
-	vec3 hcl = vec3(hue, chroma, lightness);
+	vec3 lch = vec3(lightness, chroma, hue);
 	bool valid;
-	vec3 rgb = hcl2rgb(hcl, valid);
+	vec3 rgb = oklch_to_srgb(lch, valid);
 
-    FragColor = rounded_box(rgb, valid);
+    FragColor = vec4(rgb, 1.);
 }

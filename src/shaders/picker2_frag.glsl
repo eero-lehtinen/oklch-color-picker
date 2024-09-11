@@ -7,9 +7,9 @@ void main() {
 	float chroma = (uv.y) * 0.33;
 	float hue = uv.x;
 
-	vec3 hcl = vec3(hue, chroma, lightness);
+	vec3 lch = vec3(lightness, chroma, hue);
 	bool valid;
-	vec3 rgb = hcl2rgb(hcl, valid);
+	vec3 rgb = oklch_to_srgb(lch, valid);
 
 	vec3 color = valid ? rgb : BG;
 
