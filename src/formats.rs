@@ -138,6 +138,16 @@ pub fn format_color(c: Oklcha, fallback: Srgba, format: ColorFormat, use_alpha: 
     }
 }
 
+use lexical_parse_float::parse::parse_complete;
+
+pub fn parse_js_float(s: &str) -> Option<f32> {
+    parse_complete::<_, { lexical_parse_float::format::JAVASCRIPT_LITERAL }>(
+        s.as_bytes(),
+        &Default::default(),
+    )
+    .ok()
+}
+
 pub fn parse_components<C: ColorToComponents>(s: &str, use_alpha: bool) -> Option<C> {
     let mut components = [1.0f32; 4];
     let max_component = if use_alpha { 3 } else { 2 };
@@ -146,7 +156,7 @@ pub fn parse_components<C: ColorToComponents>(s: &str, use_alpha: bool) -> Optio
         if i > max_component {
             return None;
         }
-        components[i] = part.trim().parse::<f32>().ok()?;
+        components[i] = parse_js_float(part.trim())?;
     }
     Some(C::from_f32_array(components))
 }
@@ -193,9 +203,9 @@ impl CssNum {
 fn css_num<'a>(iter: &mut impl Iterator<Item = &'a str>) -> Option<CssNum> {
     let s = iter.next()?;
     if let Some(s) = s.strip_suffix('%') {
-        return s.parse().ok().map(CssNum::Percent);
+        return parse_js_float(s).map(CssNum::Percent);
     }
-    s.parse().ok().map(CssNum::Num)
+    parse_js_float(s).map(CssNum::Num)
 }
 
 fn parse_alpha<'a>(iter: &mut impl Iterator<Item = &'a str>) -> Option<f32> {
@@ -241,7 +251,7 @@ pub fn parse_color(s: &str, input_format: ColorFormat, use_alpha: bool) -> Optio
                     CssNum::Num(n) => n,
                     CssNum::Percent(p) => p / 100. * 0.4,
                 };
-                c.hue = iter.next()?.parse().ok()?;
+                c.hue = parse_js_float(iter.next()?)?;
                 c.alpha = parse_alpha(iter)?;
                 c
             }
@@ -257,7 +267,7 @@ pub fn parse_color(s: &str, input_format: ColorFormat, use_alpha: bool) -> Optio
             CssColorFormat::Hsl => {
                 let mut c = Hsla::WHITE;
                 let iter = &mut css_words(css_named(s, "oklch")?);
-                c.hue = iter.next()?.parse().ok()?;
+                c.hue = parse_js_float(iter.next()?)?;
                 c.saturation = css_num(iter)?.apply();
                 c.lightness = css_num(iter)?.apply();
                 c.alpha = parse_alpha(iter)?;
