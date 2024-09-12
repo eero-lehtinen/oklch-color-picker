@@ -21,6 +21,7 @@ use formats::{
 };
 use gamut::gamut_clip_preserve_chroma;
 use gl_programs::{GlowProgram, ProgramKind};
+use rand::{rngs::SmallRng, Rng, SeedableRng};
 use strum::IntoEnumIterator;
 
 mod cli;
@@ -73,7 +74,13 @@ fn main() -> ExitCode {
 }
 
 fn random_color() -> Oklcha {
-    Default::default()
+    let mut rng = SmallRng::from_entropy();
+    Oklcha::new(
+        rng.gen_range(0.4..0.8),
+        rng.gen_range(0.05..0.2),
+        rng.gen_range(0.0..360.),
+        1.,
+    )
 }
 
 fn lerp(v0: f32, v1: f32, t: f32) -> f32 {

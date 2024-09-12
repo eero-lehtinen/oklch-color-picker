@@ -17,5 +17,6 @@ egui_extras = "0.28.1"
 enum-map = "2.7.3"
 lexical-parse-float = { version = "0.8.5", features = ["format"] }
 once_cell = "1.19.0"
+rand = { version = "0.8.5", features = ["small_rng"] }
 regex = "1.10.6"
 strum = { version = "0.26.3", features = ["derive"] }

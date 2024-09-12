@@ -2404,6 +2404,7 @@ dependencies = [
  "enum-map",
  "lexical-parse-float",
  "once_cell",
+ "rand",
  "regex",
  "strum",
 ]
