@@ -1,9 +1,8 @@
 use bevy_color::Oklcha;
 use eframe::glow::{self, HasContext};
-use enum_map::Enum;
 use strum::EnumIter;
 
-#[derive(Enum, Default, Clone, Copy, EnumIter, Hash, PartialEq, Eq)]
+#[derive(Default, Clone, Copy, EnumIter, Hash, PartialEq, Eq)]
 pub enum ProgramKind {
     #[default]
     Picker,
