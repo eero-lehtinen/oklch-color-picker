@@ -1,7 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::{
-    fmt::Display,
+    fmt::{Debug, Display},
     sync::{Arc, Mutex},
 };
 
@@ -12,12 +12,12 @@ use eframe::{
     glow::{self},
 };
 use egui_extras::{Size, StripBuilder};
+use formats::{format_color, parse_color, ColorFormat, CssColorFormat, RawColorFormat};
 use gamut::gamut_clip_preserve_chroma;
 use gl_programs::{GlowProgram, ProgramKind};
-use once_cell::sync::Lazy;
-use regex::Regex;
-use strum::{EnumIter, IntoEnumIterator};
+use strum::IntoEnumIterator;
 
+mod formats;
 mod gamut;
 mod gl_programs;
 
@@ -28,7 +28,7 @@ fn main() {
         ..Default::default()
     };
     eframe::run_native(
-        "App",
+        "Oklch Picker",
         native_options,
         Box::new(|cc| Ok(Box::new(App::new(cc)))),
     )
@@ -78,6 +78,15 @@ fn setup_custom_fonts(ctx: &egui::Context) {
             .unwrap()
             .size = 14.;
         style.spacing.button_padding = egui::vec2(8.0, 4.0);
+        style.spacing.icon_width *= 1.8;
+        style.spacing.icon_width_inner *= 1.8;
+        style.visuals.widgets.open.rounding = 4.0.into();
+        style.visuals.widgets.active.rounding = 4.0.into();
+        style.visuals.widgets.hovered.rounding = 4.0.into();
+        style.visuals.widgets.inactive.rounding = 4.0.into();
+        style.visuals.widgets.noninteractive.rounding = 4.0.into();
+        style.visuals.widgets.inactive.bg_stroke =
+            egui::Stroke::new(1.0, style.visuals.widgets.inactive.bg_fill);
     });
 
     // Tell egui to use these fonts:
@@ -88,6 +97,9 @@ struct App {
     previous_color: Oklcha,
     color: Oklcha,
     format: ColorFormat,
+    prev_css: CssColorFormat,
+    prev_raw: RawColorFormat,
+    use_alpha: bool,
     programs: HashMap<ProgramKind, Arc<Mutex<GlowProgram>>>,
     input_text: HashMap<u8, String>,
 }
@@ -101,7 +113,10 @@ impl App {
         Self {
             previous_color: Oklcha::new(0.8, 0.1, 0.0, 1.0),
             color: Oklcha::new(0.8, 0.1, 0.0, 1.0),
-            format: ColorFormat::Oklch,
+            format: ColorFormat::Css(CssColorFormat::Hex),
+            prev_css: Default::default(),
+            prev_raw: Default::default(),
+            use_alpha: true,
             programs: ProgramKind::iter()
                 .map(|kind| (kind, Arc::new(Mutex::new(GlowProgram::new(gl, kind)))))
                 .collect(),
@@ -119,7 +134,7 @@ fn canvas_picker(ui: &mut egui::Ui) -> egui::Frame {
     egui::Frame::canvas(ui.style())
         .inner_margin(0.0)
         .outer_margin(egui::Margin {
-            bottom: 16.,
+            bottom: 8.,
             ..Default::default()
         })
         .rounding(0.0)
@@ -157,85 +172,6 @@ fn is_fallback(color: Oklcha) -> bool {
         .to_f32_array()
         .iter()
         .any(|x| *x < 0. || *x > 1.)
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, EnumIter)]
-enum ColorFormat {
-    Oklch,
-    Hex,
-    Rgba,
-}
-
-impl Display for ColorFormat {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ColorFormat::Oklch => write!(f, "Oklch"),
-            ColorFormat::Hex => write!(f, "Hex"),
-            ColorFormat::Rgba => write!(f, "Rgba"),
-        }
-    }
-}
-
-fn float_to_decimal(v: f32, decimals: i32) -> f32 {
-    let factor = 10.0f32.powi(decimals);
-    (v * factor).round() / factor
-}
-
-fn format_color(color: Oklcha, fallback: Srgba, format: ColorFormat) -> String {
-    match format {
-        ColorFormat::Oklch => {
-            format!(
-                "oklch({} {} {} / {})",
-                float_to_decimal(color.lightness, 4),
-                float_to_decimal(color.chroma, 4),
-                float_to_decimal(color.hue, 2),
-                float_to_decimal(color.alpha, 4)
-            )
-        }
-        ColorFormat::Hex => fallback.to_hex(),
-        ColorFormat::Rgba => {
-            let c = fallback.to_u8_array_no_alpha();
-            format!(
-                "rgba({}, {}, {}, {})",
-                c[0],
-                c[1],
-                c[2],
-                float_to_decimal(color.alpha, 2)
-            )
-        }
-    }
-}
-
-const N: &str = r#"(\d+(?:\.?\d*))"#;
-
-static OKLCH_REGEX: Lazy<Regex> = Lazy::new(|| {
-    let r = const_format::formatcp!(r#"^oklch\(\s*{N}(%?)\s+{N}\s+{N}\s*(?:\/\s*{N}(%?)\s*)?\)$"#);
-    Regex::new(r).unwrap()
-});
-
-fn parse_color(s: &str, format: ColorFormat) -> Option<Oklcha> {
-    match format {
-        ColorFormat::Oklch => {
-            let caps = OKLCH_REGEX.captures(s)?;
-            let mut lightness = caps.get(1)?.as_str().parse::<f32>().ok()?;
-            let percent_sign = caps.get(2)?.as_str();
-            if !percent_sign.is_empty() {
-                lightness /= 100.;
-            }
-            let chroma = caps.get(3)?.as_str().parse::<f32>().ok()?;
-            let hue = caps.get(4)?.as_str().parse::<f32>().ok()?;
-            let mut alpha = caps
-                .get(5)
-                .map_or(Some(1.), |c| c.as_str().parse::<f32>().ok())?;
-            let percent_sign = caps.get(6).map_or("", |c| c.as_str());
-            if !percent_sign.is_empty() {
-                alpha /= 100.;
-            }
-            Some(Oklcha::new(lightness, chroma, hue, alpha))
-        }
-        ColorFormat::Hex => Some(Oklcha::default()),
-        ColorFormat::Rgba => Some(Oklcha::default()),
-    }
 }
 
 impl eframe::App for App {
@@ -316,8 +252,10 @@ impl eframe::App for App {
         central_panel.show(ctx, |ui| {
             StripBuilder::new(ui)
                 .size(Size::remainder())
+                .size(Size::exact(10.))
                 .size(Size::relative(0.20).at_least(120.))
-                .size(Size::relative(0.18).at_least(100.))
+                .size(Size::exact(10.))
+                .size(Size::relative(0.18).at_least(120.))
                 .vertical(|mut strip| {
                     strip.strip(|builder| {
                         builder.sizes(Size::remainder(), 2).horizontal(|mut strip| {
@@ -385,6 +323,8 @@ impl eframe::App for App {
                         });
                     });
 
+                    strip.cell(|_| {});
+
                     strip.strip(|builder| {
                         let draw_slider_line = |ui: &mut egui::Ui, rect: egui::Rect, pos: f32| {
                             let center = Pos2::new(
@@ -407,7 +347,7 @@ impl eframe::App for App {
                         let input_size = Vec2::new(66., 26.);
                         let show_label = |ui: &mut egui::Ui, label: &str| {
                             let label = egui::Label::new(label);
-                            ui.add_sized(Vec2::new(10., 26.), label);
+                            ui.add_sized(Vec2::new(12., 26.), label);
                         };
                         builder.sizes(Size::remainder(), 4).vertical(|mut strip| {
                             strip.cell(|ui| {
@@ -572,133 +512,164 @@ impl eframe::App for App {
                         });
                     });
 
+                    strip.cell(|_| {});
+
                     strip.strip(|builder| {
-                        builder.sizes(Size::remainder(), 3).horizontal(|mut strip| {
-                            let rect_allocate = |ui: &mut egui::Ui| {
-                                let (rect, _) = ui.allocate_exact_size(
-                                    Vec2::new(ui.available_width(), ui.available_height() / 1.8),
-                                    egui::Sense::drag(),
-                                );
-                                rect
-                            };
-
-                            let mut show_color_edit =
-                                |ui: &mut egui::Ui, color: &mut Oklcha, fallback: Srgba, id: u8| {
-                                    let mut text = if let Some(text) = self.input_text.get(&id) {
-                                        if let Some(c) = parse_color(text, self.format) {
-                                            *color = c;
-                                        } else {
-                                            ui.style_mut().visuals.selection.stroke =
-                                                egui::Stroke::new(
-                                                    2.0,
-                                                    egui::Color32::from_hex("#ce3c47").unwrap(),
-                                                );
-                                        }
-
-                                        text.clone()
-                                    } else {
-                                        format_color(*color, fallback, self.format)
-                                    };
-
-                                    let output = egui::TextEdit::singleline(&mut text)
-                                        .margin(6.0)
-                                        .min_size(Vec2::new(ui.available_width(), 0.))
-                                        .show(ui);
-
-                                    if output.response.has_focus() {
-                                        self.input_text.insert(id, text.clone());
-                                    } else {
-                                        self.input_text.remove(&id);
-                                    }
+                        builder
+                            .size(Size::remainder())
+                            .size(Size::remainder())
+                            .size(Size::exact(10.))
+                            .size(Size::remainder())
+                            .horizontal(|mut strip| {
+                                let rect_allocate = |ui: &mut egui::Ui| {
+                                    let (rect, _) = ui.allocate_exact_size(
+                                        Vec2::new(
+                                            ui.available_width(),
+                                            ui.available_height() / 1.8,
+                                        ),
+                                        egui::Sense::drag(),
+                                    );
+                                    rect
                                 };
 
-                            strip.cell(|ui| {
-                                ui.vertical(|ui| {
-                                    canvas_final(ui).show(ui, |ui| {
-                                        let rect = rect_allocate(ui);
-                                        glow_paint(
-                                            ui,
-                                            ProgramKind::FinalPrevious,
-                                            self.color,
-                                            rect.aspect_ratio(),
-                                        );
-                                    });
-
-                                    show_color_edit(
-                                        ui,
-                                        &mut self.previous_color,
-                                        previous_fallback_color,
-                                        0,
-                                    );
-                                    ui.label(format!(
-                                        "Previous Color{}",
-                                        if is_fallback(self.previous_color) {
-                                            " (fallback)"
-                                        } else {
-                                            ""
-                                        }
-                                    ));
-                                });
-                            });
-
-                            strip.cell(|ui| {
-                                ui.vertical(|ui| {
-                                    canvas_final(ui).show(ui, |ui| {
-                                        let rect = rect_allocate(ui);
-                                        glow_paint(
-                                            ui,
-                                            ProgramKind::Final,
-                                            self.color,
-                                            rect.aspect_ratio(),
-                                        );
-                                    });
-
-                                    show_color_edit(ui, &mut self.color, fallback_color, 1);
-                                    ui.label(format!(
-                                        "New Color{}",
-                                        if is_fallback(self.color) {
-                                            " (fallback)"
-                                        } else {
-                                            ""
-                                        }
-                                    ));
-                                });
-                            });
-
-                            strip.cell(|ui| {
-                                ui.vertical_centered_justified(|ui| {
-                                    ui.add_space(4.0);
-                                    ui.style_mut()
-                                        .text_styles
-                                        .get_mut(&egui::TextStyle::Button)
-                                        .unwrap()
-                                        .size = 20.;
-                                    ui.horizontal(|ui| {
-                                        egui::ComboBox::from_id_source("format")
-                                            .selected_text(format!("{:?}", &mut self.format))
-                                            .show_ui(ui, |ui| {
-                                                for format in ColorFormat::iter() {
-                                                    ui.selectable_value(
-                                                        &mut self.format,
-                                                        format,
-                                                        format.to_string(),
+                                let mut show_color_edit =
+                                    |ui: &mut egui::Ui,
+                                     color: &mut Oklcha,
+                                     fallback: Srgba,
+                                     id: u8| {
+                                        let mut text = if let Some(text) = self.input_text.get(&id)
+                                        {
+                                            if let Some(c) =
+                                                parse_color(text, self.format, self.use_alpha)
+                                            {
+                                                *color = c;
+                                            } else {
+                                                ui.style_mut().visuals.selection.stroke =
+                                                    egui::Stroke::new(
+                                                        2.0,
+                                                        egui::Color32::from_hex("#ce3c47").unwrap(),
                                                     );
-                                                }
-                                            });
+                                            }
 
-                                        let label = egui::Label::new("Output Format")
-                                            .wrap_mode(egui::TextWrapMode::Truncate);
-                                        ui.add(label);
+                                            text.clone()
+                                        } else {
+                                            format_color(
+                                                *color,
+                                                fallback,
+                                                self.format,
+                                                self.use_alpha,
+                                            )
+                                        };
+
+                                        let output = egui::TextEdit::singleline(&mut text)
+                                            .margin(6.0)
+                                            .min_size(Vec2::new(ui.available_width(), 0.))
+                                            .show(ui);
+
+                                        if output.response.has_focus() {
+                                            self.input_text.insert(id, text.clone());
+                                        } else {
+                                            self.input_text.remove(&id);
+                                        }
+                                    };
+
+                                strip.cell(|ui| {
+                                    ui.vertical(|ui| {
+                                        canvas_final(ui).show(ui, |ui| {
+                                            let rect = rect_allocate(ui);
+                                            glow_paint(
+                                                ui,
+                                                ProgramKind::FinalPrevious,
+                                                self.color,
+                                                rect.aspect_ratio(),
+                                            );
+                                        });
+
+                                        show_color_edit(
+                                            ui,
+                                            &mut self.previous_color,
+                                            previous_fallback_color,
+                                            0,
+                                        );
+                                        ui.label(format!(
+                                            "Previous Color{}",
+                                            if is_fallback(self.previous_color) {
+                                                " (fallback)"
+                                            } else {
+                                                ""
+                                            }
+                                        ));
                                     });
+                                });
 
-                                    let button = egui::Button::new(
-                                        RichText::new("DONE").strong().size(30.0),
-                                    )
-                                    .min_size(ui.available_size());
-                                    ui.add(button);
+                                strip.cell(|ui| {
+                                    ui.vertical(|ui| {
+                                        canvas_final(ui).show(ui, |ui| {
+                                            let rect = rect_allocate(ui);
+                                            glow_paint(
+                                                ui,
+                                                ProgramKind::Final,
+                                                self.color,
+                                                rect.aspect_ratio(),
+                                            );
+                                        });
+
+                                        show_color_edit(ui, &mut self.color, fallback_color, 1);
+                                        ui.label(format!(
+                                            "New Color{}",
+                                            if is_fallback(self.color) {
+                                                " (fallback)"
+                                            } else {
+                                                ""
+                                            }
+                                        ));
+                                    });
+                                });
+
+                                strip.cell(|_| {});
+
+                                strip.cell(|ui| {
+                                    ui.add_space(4.0);
+                                    ui.vertical_centered(|ui| {
+                                        let style = ui.style_mut();
+                                        style
+                                            .text_styles
+                                            .get_mut(&egui::TextStyle::Button)
+                                            .unwrap()
+                                            .size = 18.;
+
+                                        style.spacing.button_padding = egui::vec2(4.0, 3.0);
+
+                                        let App {
+                                            format,
+                                            prev_css,
+                                            prev_raw,
+                                            use_alpha,
+                                            ..
+                                        } = self;
+                                        color_format_input(
+                                            ui, format, use_alpha, prev_css, prev_raw,
+                                        );
+
+                                        ui.add_space(1.);
+
+                                        // ui.style_mut().spacing.button_padding = egui::vec2(16.0, 16.0);
+                                        ui.horizontal_centered(|ui| {
+                                            let button =
+                                                egui::Button::new(RichText::new("DONE").size(26.0))
+                                                    .min_size(Vec2::new(
+                                                        ui.available_size().x,
+                                                        ui.available_size().y,
+                                                    ))
+                                                    .stroke(egui::Stroke::new(
+                                                        1.0,
+                                                        fallback_egui_color,
+                                                    ));
+                                            ui.add(button);
+                                        });
+                                    });
                                 });
                             });
-                        });
                     });
                 });
 
@@ -717,50 +688,65 @@ impl eframe::App for App {
     }
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
-    #[test]
-    fn num_test1() {
-        let r = Regex::new(N).unwrap();
-        assert_eq!(r.captures("0.1").unwrap().get(0).unwrap().as_str(), "0.1");
+fn color_format_input(
+    ui: &mut egui::Ui,
+    value: &mut ColorFormat,
+    use_alpha: &mut bool,
+    prev_css: &mut CssColorFormat,
+    prev_raw: &mut RawColorFormat,
+) {
+    let mut raw = matches!(*value, ColorFormat::Raw(_));
+    let old_raw = raw;
+
+    let text = |r| if r { "RAW" } else { "CSS" };
+
+    ui.horizontal(|ui| {
+        egui::ComboBox::from_id_source("raw_or_css")
+            .width(90.)
+            .selected_text(text(raw))
+            .show_ui(ui, |ui| {
+                ui.selectable_value(&mut raw, false, text(false));
+                ui.selectable_value(&mut raw, true, text(true));
+            });
+
+        if raw {
+            ui.add(egui::Checkbox::new(use_alpha, RichText::new("Alpha")));
+        }
+    });
+
+    ui.add_space(4.0);
+
+    if raw != old_raw {
+        if raw {
+            *value = ColorFormat::Raw(*prev_raw);
+        } else {
+            *value = ColorFormat::Css(*prev_css);
+        }
+
+        match *value {
+            ColorFormat::Css(css) => *prev_css = css,
+            ColorFormat::Raw(r) => *prev_raw = r,
+        }
     }
 
-    #[test]
-    fn num_test2() {
-        let r = Regex::new(N).unwrap();
-        assert_eq!(r.captures("0.").unwrap().get(0).unwrap().as_str(), "0.");
+    match value {
+        ColorFormat::Css(css_format) => format_combo(ui, css_format),
+        ColorFormat::Raw(raw_format) => format_combo(ui, raw_format),
     }
 
-    #[test]
-    fn test1() {
-        assert_eq!(
-            parse_color("oklch(0. 0.1 0.2/0.3)", ColorFormat::Oklch),
-            Some(Oklcha::new(0., 0.1, 0.2, 0.3))
-        );
-    }
+    ui.add_space(4.0);
+}
 
-    #[test]
-    fn test2() {
-        assert_eq!(
-            parse_color("oklch( 50.% 0. 0.2 / 2% )", ColorFormat::Oklch),
-            Some(Oklcha::new(0.5, 0., 0.2, 0.02))
-        );
-    }
-
-    #[test]
-    fn test3() {
-        assert_eq!(
-            parse_color("oklch(1 1 1)", ColorFormat::Oklch),
-            Some(Oklcha::new(1., 1., 1., 1.))
-        );
-    }
-
-    #[test]
-    fn test4() {
-        assert_eq!(
-            parse_color("oklch(50% 0.1 0.2 /)", ColorFormat::Oklch),
-            None
-        );
-    }
+fn format_combo<T: IntoEnumIterator + Display + Debug + PartialEq + Copy>(
+    ui: &mut egui::Ui,
+    value: &mut T,
+) {
+    egui::ComboBox::from_id_source("format")
+        .width(150.)
+        .selected_text(value.to_string().to_ascii_uppercase())
+        .show_ui(ui, |ui| {
+            for format in T::iter() {
+                ui.selectable_value(value, format, format.to_string().to_ascii_uppercase());
+            }
+        });
 }

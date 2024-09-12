@@ -4,7 +4,7 @@ uniform float width;
 in vec2 uv2;
 
 const float PI = 3.14159265358979323846;
-const vec3 BG = vec3(0.17, 0.17, 0.18);
+const vec3 BG = vec3(0.18, 0.18, 0.19);
 
 float gamma_function_inverse(float v) {
 	if (v <= 0.0) {
