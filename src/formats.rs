@@ -9,6 +9,12 @@ pub enum ColorFormat {
     Raw(RawColorFormat),
 }
 
+impl From<CssColorFormat> for ColorFormat {
+    fn from(value: CssColorFormat) -> Self {
+        ColorFormat::Css(value)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, EnumIter, EnumString, strum::Display, Default)]
 #[strum(serialize_all = "snake_case")]
 pub enum CssColorFormat {
@@ -28,6 +34,12 @@ pub enum RawColorFormat {
     RgbLinear,
     Oklch,
     // TODO: Octal hex
+}
+
+impl From<RawColorFormat> for ColorFormat {
+    fn from(value: RawColorFormat) -> Self {
+        ColorFormat::Raw(value)
+    }
 }
 
 fn num(v: f32, decimals: i32) -> f32 {
@@ -148,30 +160,36 @@ pub fn parse_js_float(s: &str) -> Option<f32> {
     .ok()
 }
 
-pub fn parse_components<C: ColorToComponents>(s: &str, use_alpha: bool) -> Option<C> {
+pub fn parse_components<C: ColorToComponents>(s: &str) -> Option<(C, bool)> {
     let mut components = [1.0f32; 4];
-    let max_component = if use_alpha { 3 } else { 2 };
 
+    let mut use_alpha = false;
     for (i, part) in s.split(',').enumerate() {
-        if i > max_component {
+        if i > 3 {
             return None;
+        }
+        if i == 3 {
+            use_alpha = true;
         }
         components[i] = parse_js_float(part.trim())?;
     }
-    Some(C::from_f32_array(components))
+    Some((C::from_f32_array(components), use_alpha))
 }
 
-pub fn parse_components_u8<C: ColorToPacked>(s: &str, use_alpha: bool) -> Option<C> {
+pub fn parse_components_u8<C: ColorToPacked>(s: &str) -> Option<(C, bool)> {
     let mut components = [255u8; 4];
-    let max_component = if use_alpha { 3 } else { 2 };
 
+    let mut use_alpha = false;
     for (i, part) in s.split(',').enumerate() {
-        if i > max_component {
+        if i > 3 {
             return None;
+        }
+        if i == 3 {
+            use_alpha = true;
         }
         components[i] = part.trim().parse::<u8>().ok()?;
     }
-    Some(C::from_u8_array(components))
+    Some((C::from_u8_array(components), use_alpha))
 }
 
 pub fn css_named<'a>(s: &'a str, name: &str) -> Option<&'a str> {
@@ -208,6 +226,14 @@ fn css_num<'a>(iter: &mut impl Iterator<Item = &'a str>) -> Option<CssNum> {
     parse_js_float(s).map(CssNum::Num)
 }
 
+fn css_num_rgb<'a>(iter: &mut impl Iterator<Item = &'a str>) -> Option<f32> {
+    match css_num(iter)? {
+        CssNum::Num(n) => n / 255.,
+        CssNum::Percent(p) => p / 100.,
+    }
+    .into()
+}
+
 fn parse_alpha<'a>(iter: &mut impl Iterator<Item = &'a str>) -> Option<f32> {
     let Some(slash) = iter.next() else {
         // If there is not alpha, just return 1.
@@ -219,68 +245,67 @@ fn parse_alpha<'a>(iter: &mut impl Iterator<Item = &'a str>) -> Option<f32> {
     Some(css_num(iter)?.apply())
 }
 
-pub fn parse_color_unknown_format(s: &str) -> Option<(Oklcha, ColorFormat)> {
+pub fn parse_color_unknown_format(s: &str) -> Option<(Oklcha, ColorFormat, bool)> {
     let format_candidates = [RawColorFormat::Rgb, RawColorFormat::RgbFloat]
         .into_iter()
         .map(ColorFormat::Raw)
         .chain(CssColorFormat::iter().map(ColorFormat::Css));
 
     for format in format_candidates {
-        if let Some(parsed) = parse_color(s, format, true) {
-            return Some((parsed, format));
-        }
-        if matches!(format, ColorFormat::Raw(_)) {
-            if let Some(parsed) = parse_color(s, format, false) {
-                return Some((parsed, format));
-            }
+        if let Some((parsed, use_alpha)) = parse_color(s, format) {
+            return Some((parsed, format, use_alpha));
         }
     }
     None
 }
 
-/// NOTE: use_alpha is ignored with css colors
-pub fn parse_color(s: &str, input_format: ColorFormat, use_alpha: bool) -> Option<Oklcha> {
-    let color: Oklcha = match input_format {
-        ColorFormat::Css(css_format) => match css_format {
-            CssColorFormat::Hex => Srgba::hex(s).ok()?.into(),
-            CssColorFormat::Oklch => {
-                let mut c = Oklcha::WHITE;
-                let iter = &mut css_words(css_named(s, "oklch")?);
-                c.lightness = css_num(iter)?.apply();
-                c.chroma = match css_num(iter)? {
-                    CssNum::Num(n) => n,
-                    CssNum::Percent(p) => p / 100. * 0.4,
-                };
-                c.hue = parse_js_float(iter.next()?)?;
-                c.alpha = parse_alpha(iter)?;
-                c
-            }
-            CssColorFormat::Rgb => {
-                let mut c = Srgba::WHITE;
-                let iter = &mut css_words(css_named(s, "oklch")?);
-                c.red = css_num(iter)?.apply();
-                c.green = css_num(iter)?.apply();
-                c.blue = css_num(iter)?.apply();
-                c.alpha = parse_alpha(iter)?;
-                c.into()
-            }
-            CssColorFormat::Hsl => {
-                let mut c = Hsla::WHITE;
-                let iter = &mut css_words(css_named(s, "oklch")?);
-                c.hue = parse_js_float(iter.next()?)?;
-                c.saturation = css_num(iter)?.apply();
-                c.lightness = css_num(iter)?.apply();
-                c.alpha = parse_alpha(iter)?;
-                c.into()
-            }
-        },
-        ColorFormat::Raw(format) => match format {
-            RawColorFormat::Rgb => parse_components_u8::<Srgba>(s, use_alpha)?.into(),
-            RawColorFormat::RgbFloat => parse_components::<Srgba>(s, use_alpha)?.into(),
-            RawColorFormat::RgbLinear => parse_components::<LinearRgba>(s, use_alpha)?.into(),
-            RawColorFormat::Oklch => parse_components::<Oklcha>(s, use_alpha)?,
-        },
-    };
+pub fn parse_color(s: &str, input_format: ColorFormat) -> Option<(Oklcha, bool)> {
+    match input_format {
+        ColorFormat::Css(css_format) => {
+            let color = match css_format {
+                CssColorFormat::Hex => Srgba::hex(s).ok()?.into(),
+                CssColorFormat::Oklch => {
+                    let mut c = Oklcha::WHITE;
+                    let iter = &mut css_words(css_named(s, "oklch")?);
+                    c.lightness = css_num(iter)?.apply();
+                    c.chroma = match css_num(iter)? {
+                        CssNum::Num(n) => n,
+                        CssNum::Percent(p) => p / 100. * 0.4,
+                    };
+                    c.hue = parse_js_float(iter.next()?)?;
+                    c.alpha = parse_alpha(iter)?;
+                    c
+                }
+                CssColorFormat::Rgb => {
+                    let mut c = Srgba::WHITE;
+                    let iter = &mut css_words(css_named(s, "rgb")?);
+                    c.red = css_num_rgb(iter)?;
+                    c.green = css_num_rgb(iter)?;
+                    c.blue = css_num_rgb(iter)?;
+                    c.alpha = parse_alpha(iter)?;
+                    c.into()
+                }
+                CssColorFormat::Hsl => {
+                    let mut c = Hsla::WHITE;
+                    let iter = &mut css_words(css_named(s, "hsl")?);
+                    c.hue = parse_js_float(iter.next()?)?;
+                    c.saturation = css_num(iter)?.apply();
+                    c.lightness = css_num(iter)?.apply();
+                    c.alpha = parse_alpha(iter)?;
+                    c.into()
+                }
+            };
 
-    Some(color)
+            (color, true)
+        }
+        ColorFormat::Raw(format) => match format {
+            RawColorFormat::Rgb => parse_components_u8::<Srgba>(s).map(|(c, a)| (c.into(), a))?,
+            RawColorFormat::RgbFloat => parse_components::<Srgba>(s).map(|(c, a)| (c.into(), a))?,
+            RawColorFormat::RgbLinear => {
+                parse_components::<LinearRgba>(s).map(|(c, a)| (c.into(), a))?
+            }
+            RawColorFormat::Oklch => parse_components::<Oklcha>(s)?,
+        },
+    }
+    .into()
 }

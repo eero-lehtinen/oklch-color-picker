@@ -2,37 +2,78 @@
 
 use std::{
     fmt::{Debug, Display},
+    process::ExitCode,
     sync::{Arc, Mutex},
 };
 
 use bevy_color::{ColorToComponents, ColorToPacked, LinearRgba, Oklcha, Srgba};
+use clap::Parser;
+use cli::{Cli, CliColorFormat};
 use eframe::{
     egui::{self, ahash::HashMap, Color32, DragValue, Pos2, RichText, Stroke, Vec2},
     egui_glow,
     glow::{self},
 };
 use egui_extras::{Size, StripBuilder};
-use formats::{format_color, parse_color, ColorFormat, CssColorFormat, RawColorFormat};
+use formats::{
+    format_color, parse_color, parse_color_unknown_format, ColorFormat, CssColorFormat,
+    RawColorFormat,
+};
 use gamut::gamut_clip_preserve_chroma;
 use gl_programs::{GlowProgram, ProgramKind};
 use strum::IntoEnumIterator;
 
+mod cli;
 mod formats;
 mod gamut;
 mod gl_programs;
 
-fn main() {
+fn main() -> ExitCode {
+    let cli = Cli::parse();
+
+    let (color, format, use_alpha) = match (cli.color, cli.format) {
+        (Some(color_string), Some(cli_format)) => {
+            let Some((color, use_alpha)) = parse_color(&color_string, cli_format.into()) else {
+                eprintln!(
+                    "Invalid color '{}' for specified format '{}'",
+                    color_string, cli_format
+                );
+                return ExitCode::FAILURE;
+            };
+
+            (color, cli_format.into(), use_alpha)
+        }
+        (Some(color_string), None) => {
+            let Some((color, format, use_alpha)) = parse_color_unknown_format(&color_string) else {
+                eprintln!("Could not detect format for color '{}'", color_string);
+                return ExitCode::FAILURE;
+            };
+            (color, format, use_alpha)
+        }
+        (None, Some(cli_format)) => (random_color(), cli_format.into(), true),
+        (None, None) => (random_color(), CliColorFormat::default().into(), true),
+    };
+
     let native_options = eframe::NativeOptions {
         multisampling: 4,
         renderer: eframe::Renderer::Glow,
         ..Default::default()
     };
+
+    let data = Arc::new((color, format, use_alpha));
+
     eframe::run_native(
-        "Oklch Picker",
+        "Oklch Color Picker",
         native_options,
-        Box::new(|cc| Ok(Box::new(App::new(cc)))),
+        Box::new(|cc| Ok(Box::new(App::new(cc, data)))),
     )
     .unwrap();
+
+    ExitCode::SUCCESS
+}
+
+fn random_color() -> Oklcha {
+    Default::default()
 }
 
 fn lerp(v0: f32, v1: f32, t: f32) -> f32 {
@@ -105,18 +146,18 @@ struct App {
 }
 
 impl App {
-    fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    fn new(cc: &eframe::CreationContext<'_>, data: Arc<(Oklcha, ColorFormat, bool)>) -> Self {
         setup_custom_fonts(&cc.egui_ctx);
 
         let gl = cc.gl.as_ref().unwrap();
 
         Self {
-            previous_color: Oklcha::new(0.8, 0.1, 0.0, 1.0),
-            color: Oklcha::new(0.8, 0.1, 0.0, 1.0),
-            format: ColorFormat::Css(CssColorFormat::Hex),
+            previous_color: data.0,
+            color: data.0,
+            format: data.1,
             prev_css: Default::default(),
             prev_raw: Default::default(),
-            use_alpha: true,
+            use_alpha: data.2,
             programs: ProgramKind::iter()
                 .map(|kind| (kind, Arc::new(Mutex::new(GlowProgram::new(gl, kind)))))
                 .collect(),
@@ -539,9 +580,10 @@ impl eframe::App for App {
                                      id: u8| {
                                         let mut text = if let Some(text) = self.input_text.get(&id)
                                         {
-                                            if let Some(c) =
-                                                parse_color(text, self.format, self.use_alpha)
+                                            if let Some((c, use_alpha)) =
+                                                parse_color(text, self.format)
                                             {
+                                                self.use_alpha = use_alpha;
                                                 *color = c;
                                             } else {
                                                 ui.style_mut().visuals.selection.stroke =

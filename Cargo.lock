@@ -833,6 +833,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e5a21b8495e732f1b3c364c9949b201ca7bae518c502c80256c96ad79eaf6ac"
 dependencies = [
  "clap_builder",
+ "clap_derive",
 ]
 
 [[package]]
@@ -845,6 +846,18 @@ dependencies = [
  "anstyle",
  "clap_lex",
  "strsim",
+]
+
+[[package]]
+name = "clap_derive"
+version = "4.5.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "501d359d5f3dcaf6ecdeee48833ae73ec6e42723a1e52419c79abf9507eec0a0"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.77",
 ]
 
 [[package]]
@@ -1405,21 +1418,6 @@ checksum = "0f214dc438f977e6d4e3500aaa277f5ad94ca83fbbd9b1a15713ce2344ccc5a1"
 dependencies = [
  "event-listener 5.3.1",
  "pin-project-lite",
-]
-
-[[package]]
-name = "fast-oklch-picker"
-version = "0.1.0"
-dependencies = [
- "bevy_color",
- "clap",
- "eframe",
- "egui_extras",
- "enum-map",
- "lexical-parse-float",
- "once_cell",
- "regex",
- "strum",
 ]
 
 [[package]]
@@ -2393,6 +2391,21 @@ dependencies = [
  "objc2 0.5.2",
  "objc2-foundation",
  "objc2-metal",
+]
+
+[[package]]
+name = "oklch-color-picker"
+version = "0.1.0"
+dependencies = [
+ "bevy_color",
+ "clap",
+ "eframe",
+ "egui_extras",
+ "enum-map",
+ "lexical-parse-float",
+ "once_cell",
+ "regex",
+ "strum",
 ]
 
 [[package]]

@@ -1,11 +1,11 @@
 [package]
-name = "fast-oklch-picker"
+name = "oklch-color-picker"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 bevy_color = { git = "https://github.com/bevyengine/bevy", rev = "5cfcbf4" }
-clap = "4.5.17"
+clap = { version = "4.5.17", features = ["derive"] }
 eframe = { version = "0.28.1", default-features = false, features = [
 	"accesskit",
 	"glow",
