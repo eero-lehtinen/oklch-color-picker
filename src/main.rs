@@ -714,7 +714,19 @@ impl eframe::App for App {
                                                         1.0,
                                                         fallback_egui_color,
                                                     ));
-                                            ui.add(button);
+                                            if ui.add(button).clicked() {
+                                                println!(
+                                                    "{}",
+                                                    format_color(
+                                                        self.color,
+                                                        fallback_color,
+                                                        self.format,
+                                                        self.use_alpha
+                                                    )
+                                                );
+                                                ui.ctx()
+                                                    .send_viewport_cmd(egui::ViewportCommand::Close)
+                                            }
                                         });
                                     });
                                 });
