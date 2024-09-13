@@ -38,6 +38,10 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - run: |
+          sudo apt-get install mingw-w64
+        if: matrix.build == 'windows-gnu'
+
       - uses: Leafwing-Studios/cargo-cache@v2
 
       - name: Build
