@@ -38,6 +38,8 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - uses: Leafwing-Studios/cargo-cache@v2
+
       - name: Build
         run: |
           cargo build --release --target ${{ matrix.target }}
