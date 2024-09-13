@@ -46,8 +46,8 @@ fn num(v: f32, decimals: i32) -> f32 {
     let factor = 10.0f32.powi(decimals);
     let n = (v * factor).round() / factor;
 
-    if n == 0. && n.is_sign_negative() {
-        -n
+    if n < 0. || n.is_sign_negative() {
+        0.
     } else {
         n
     }
