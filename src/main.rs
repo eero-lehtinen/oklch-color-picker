@@ -279,22 +279,29 @@ impl eframe::App for App {
         let previous_fallback_color =
             Srgba::from(gamut_clip_preserve_chroma(self.previous_color.into()));
 
-        let glow_paint = |ui: &mut egui::Ui, program: ProgramKind, color: Oklcha, width: f32| {
-            let p = Arc::clone(&self.programs[&program]);
-            let cb = egui::PaintCallback {
-                rect: ui.min_rect(),
-                callback: Arc::new(egui_glow::CallbackFn::new(move |_info, painter| {
-                    p.lock().unwrap().paint(
-                        painter.gl(),
-                        color,
-                        fallback_color.to_f32_array(),
-                        previous_fallback_color.to_f32_array(),
-                        width,
-                    );
-                })),
+        let glow_paint =
+            |ui: &mut egui::Ui, program: ProgramKind, color: Oklcha, width: f32, extra_w: f32| {
+                let p = Arc::clone(&self.programs[&program]);
+                let mut rect = ui.min_rect();
+                if extra_w > 0. {
+                    rect.max.x += extra_w;
+                } else {
+                    rect.min.x += extra_w;
+                }
+                let cb = egui::PaintCallback {
+                    rect,
+                    callback: Arc::new(egui_glow::CallbackFn::new(move |_info, painter| {
+                        p.lock().unwrap().paint(
+                            painter.gl(),
+                            color,
+                            fallback_color.to_f32_array(),
+                            previous_fallback_color.to_f32_array(),
+                            width,
+                        );
+                    })),
+                };
+                ui.painter().add(cb);
             };
-            ui.painter().add(cb);
-        };
 
         let draw_line = |ui: &mut egui::Ui,
                          vertical: bool,
@@ -369,6 +376,7 @@ impl eframe::App for App {
                                         ProgramKind::Picker,
                                         self.color,
                                         rect.aspect_ratio(),
+                                        0.,
                                     );
 
                                     let l = self.color.lightness;
@@ -400,6 +408,7 @@ impl eframe::App for App {
                                         ProgramKind::Picker2,
                                         self.color,
                                         rect.aspect_ratio(),
+                                        0.,
                                     );
 
                                     let h = self.color.hue / 360.;
@@ -472,6 +481,7 @@ impl eframe::App for App {
                                             ProgramKind::Lightness,
                                             self.color,
                                             rect.aspect_ratio(),
+                                            0.,
                                         );
                                         draw_slider_line(ui, rect, self.color.lightness);
                                     });
@@ -513,6 +523,7 @@ impl eframe::App for App {
                                             ProgramKind::Chroma,
                                             self.color,
                                             rect.aspect_ratio(),
+                                            0.,
                                         );
                                         draw_slider_line(ui, rect, self.color.chroma / CHROMA_MAX);
                                     });
@@ -553,6 +564,7 @@ impl eframe::App for App {
                                             ProgramKind::Hue,
                                             self.color,
                                             rect.aspect_ratio(),
+                                            0.,
                                         );
                                         draw_slider_line(ui, rect, self.color.hue / 360.);
                                     });
@@ -592,6 +604,7 @@ impl eframe::App for App {
                                             ProgramKind::Alpha,
                                             self.color,
                                             rect.aspect_ratio(),
+                                            0.,
                                         );
                                         draw_slider_line(ui, rect, self.color.alpha);
                                     });
@@ -664,7 +677,6 @@ impl eframe::App for App {
 
                                 strip.cell(|ui| {
                                     ui.vertical(|ui| {
-                                        ui.style_mut().spacing.item_spacing = Vec2::new(0.0, 0.0);
                                         canvas_final(ui).show(ui, |ui| {
                                             let rect = rect_allocate(ui);
                                             glow_paint(
@@ -672,6 +684,7 @@ impl eframe::App for App {
                                                 ProgramKind::FinalPrevious,
                                                 self.color,
                                                 rect.aspect_ratio(),
+                                                4.,
                                             );
                                         });
 
@@ -701,6 +714,7 @@ impl eframe::App for App {
                                                 ProgramKind::Final,
                                                 self.color,
                                                 rect.aspect_ratio(),
+                                                -5.,
                                             );
                                         });
 
