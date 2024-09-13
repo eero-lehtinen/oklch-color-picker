@@ -46,8 +46,6 @@ jobs:
           sudo apt-get install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev
         if: matrix.build == 'linux'
 
-      - uses: Leafwing-Studios/cargo-cache@v2
-
       - name: Build
         run: |
           cargo build --release --target ${{ matrix.target }}
