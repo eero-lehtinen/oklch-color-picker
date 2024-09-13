@@ -150,45 +150,43 @@ pub fn format_color(c: Oklcha, fallback: Srgba, format: ColorFormat, use_alpha: 
     }
 }
 
-use lexical_parse_float::parse::parse_complete;
-
 pub fn parse_js_float(s: &str) -> Option<f32> {
-    parse_complete::<_, { lexical_parse_float::format::JAVASCRIPT_LITERAL }>(
-        s.as_bytes(),
-        &Default::default(),
-    )
+    lexical_parse_float::parse::parse_complete::<
+        _,
+        { lexical_parse_float::format::JAVASCRIPT_LITERAL },
+    >(s.as_bytes(), &Default::default())
     .ok()
 }
 
 pub fn parse_components<C: ColorToComponents>(s: &str) -> Option<(C, bool)> {
     let mut components = [1.0f32; 4];
 
-    let mut use_alpha = false;
-    for (i, part) in s.split(',').enumerate() {
-        if i > 3 {
-            return None;
-        }
-        if i == 3 {
-            use_alpha = true;
-        }
-        components[i] = parse_js_float(part.trim())?;
+    let mut i = 0;
+    for part in s.split(',') {
+        *components.get_mut(i)? = parse_js_float(part.trim())?;
+        i += 1;
     }
+    if i < 3 {
+        return None;
+    }
+
+    let use_alpha = i == 4;
     Some((C::from_f32_array(components), use_alpha))
 }
 
 pub fn parse_components_u8<C: ColorToPacked>(s: &str) -> Option<(C, bool)> {
     let mut components = [255u8; 4];
 
-    let mut use_alpha = false;
-    for (i, part) in s.split(',').enumerate() {
-        if i > 3 {
-            return None;
-        }
-        if i == 3 {
-            use_alpha = true;
-        }
-        components[i] = part.trim().parse::<u8>().ok()?;
+    let mut i = 0;
+    for part in s.split(',') {
+        *components.get_mut(i)? = part.trim().parse::<u8>().ok()?;
+        i += 1;
     }
+    if i < 3 {
+        return None;
+    }
+
+    let use_alpha = i == 4;
     Some((C::from_u8_array(components), use_alpha))
 }
 
@@ -308,4 +306,153 @@ pub fn parse_color(s: &str, input_format: ColorFormat) -> Option<(Oklcha, bool)>
         },
     }
     .into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hex1() {
+        assert_eq!(
+            parse_color("#aabbcc", CssColorFormat::Hex.into()).unwrap(),
+            (Srgba::rgba_u8(170, 187, 204, 255).into(), true)
+        );
+    }
+
+    #[test]
+    fn hex2() {
+        assert_eq!(
+            parse_color("#aabbcc00", CssColorFormat::Hex.into()).unwrap(),
+            (Srgba::rgba_u8(170, 187, 204, 0).into(), true)
+        );
+    }
+
+    #[test]
+    fn hex3() {
+        assert_eq!(
+            parse_color("#aaa", CssColorFormat::Hex.into()).unwrap(),
+            (Srgba::rgba_u8(170, 170, 170, 255).into(), true)
+        );
+    }
+
+    #[test]
+    fn fail_hex1() {
+        assert_eq!(parse_color("", CssColorFormat::Hex.into()), None);
+    }
+
+    #[test]
+    fn fail_hex2() {
+        assert_eq!(parse_color("#a", CssColorFormat::Hex.into()), None);
+    }
+
+    #[test]
+    fn rgb1() {
+        assert_eq!(
+            parse_color("rgb(170 187 204)", CssColorFormat::Rgb.into()).unwrap(),
+            (Srgba::rgba_u8(170, 187, 204, 255).into(), true)
+        );
+    }
+
+    #[test]
+    fn rgb2() {
+        assert_eq!(
+            parse_color("rgb(170 187 204 / 0.0)", CssColorFormat::Rgb.into()).unwrap(),
+            (Srgba::rgba_u8(170, 187, 204, 0).into(), true)
+        );
+    }
+
+    #[test]
+    fn rgb3() {
+        assert_eq!(
+            parse_color("rgb(   170 187 204/.0%  )", CssColorFormat::Rgb.into()).unwrap(),
+            (Srgba::rgba_u8(170, 187, 204, 0).into(), true)
+        );
+    }
+
+    #[test]
+    fn fail_rgb1() {
+        assert_eq!(parse_color("170 187 204", CssColorFormat::Rgb.into()), None);
+    }
+
+    #[test]
+    fn fail_rgb2() {
+        assert_eq!(parse_color("rgb(1 2)", CssColorFormat::Rgb.into()), None);
+    }
+
+    #[test]
+    fn fail_rgb3() {
+        assert_eq!(parse_color("rgb()", CssColorFormat::Rgb.into()), None);
+    }
+
+    #[test]
+    fn fail_rgb4() {
+        assert_eq!(parse_color("rgb(x 1 1%)", CssColorFormat::Rgb.into()), None);
+    }
+
+    #[test]
+    fn oklch1() {
+        assert_eq!(
+            parse_color("oklch(0.5 0.4 0.2)", CssColorFormat::Oklch.into()).unwrap(),
+            (Oklcha::new(0.5, 0.4, 0.2, 1.), true)
+        );
+    }
+
+    #[test]
+    fn oklch2() {
+        assert_eq!(
+            parse_color("oklch(10% 100% 150 / 20%)", CssColorFormat::Oklch.into()).unwrap(),
+            (Oklcha::new(0.1, 0.4, 150., 0.2), true)
+        );
+    }
+
+    #[test]
+    fn raw_rgb_float1() {
+        assert_eq!(
+            parse_color("0,.1,1.,0.2", RawColorFormat::RgbFloat.into()).unwrap(),
+            (Srgba::new(0.0, 0.1, 1.0, 0.2).into(), true)
+        );
+    }
+
+    #[test]
+    fn raw_rgb_float2() {
+        assert_eq!(
+            parse_color("0,.1,1.", RawColorFormat::RgbFloat.into()).unwrap(),
+            (Srgba::new(0.0, 0.1, 1.0, 1.0).into(), false)
+        );
+    }
+
+    #[test]
+    fn raw_rgb_float3() {
+        assert_eq!(
+            parse_color("0.0,     0.5,   0.8", RawColorFormat::RgbFloat.into()).unwrap(),
+            (Srgba::new(0.0, 0.5, 0.8, 1.0).into(), false)
+        );
+    }
+
+    #[test]
+    fn fail_raw_rgb_float1() {
+        assert_eq!(
+            parse_color("0.0 0.5, 0.8", RawColorFormat::RgbFloat.into()),
+            None
+        );
+    }
+
+    #[test]
+    fn fail_raw_rgb_float2() {
+        assert_eq!(parse_color("0", RawColorFormat::RgbFloat.into()), None);
+    }
+
+    #[test]
+    fn fail_raw_rgb_float3() {
+        assert_eq!(parse_color("0, 0", RawColorFormat::RgbFloat.into()), None);
+    }
+
+    #[test]
+    fn fail_raw_rgb_float4() {
+        assert_eq!(
+            parse_color("0, 0, 0, 0, 0", RawColorFormat::RgbFloat.into()),
+            None
+        );
+    }
 }
