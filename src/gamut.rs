@@ -115,30 +115,30 @@ fn find_gamut_intersection(a: f32, b: f32, ll1: f32, cc1: f32, ll0: f32) -> f32 
             let dll = ll1 - ll0;
             let dcc = cc1;
 
-            let kk_ll = 0.3963377774 * a + 0.2158037573 * b;
-            let kk_mm = -0.1055613458 * a - 0.0638541728 * b;
-            let kk_ss = -0.0894841775 * a - 1.2914855480 * b;
+            let k_l = 0.3963377774 * a + 0.2158037573 * b;
+            let k_m = -0.1055613458 * a - 0.0638541728 * b;
+            let k_s = -0.0894841775 * a - 1.2914855480 * b;
 
-            let ll_dt = dll + dcc * kk_ll;
-            let mm_dt = dll + dcc * kk_mm;
-            let ss_dt = dll + dcc * kk_ss;
+            let l_dt = dll + dcc * k_l;
+            let m_dt = dll + dcc * k_m;
+            let s_dt = dll + dcc * k_s;
 
             // If higher accuracy is required, 2 or 3 iterations of the following block can be used:
             {
                 let ll = ll0 * (1.0 - t) + t * ll1;
                 let cc = t * cc1;
 
-                let l_ = ll + cc * kk_ll;
-                let m_ = ll + cc * kk_mm;
-                let s_ = ll + cc * kk_ss;
+                let l_ = ll + cc * k_l;
+                let m_ = ll + cc * k_m;
+                let s_ = ll + cc * k_s;
 
                 let l = l_.powi(3);
                 let m = m_.powi(3);
                 let s = s_.powi(3);
 
-                let l_dt = 3.0 * ll_dt * l_ * l_;
-                let m_dt = 3.0 * mm_dt * m_ * m_;
-                let s_dt = 3.0 * ss_dt * s_ * s_;
+                let l_dt = 3.0 * l_dt * l_ * l_;
+                let m_dt = 3.0 * m_dt * m_ * m_;
+                let s_dt = 3.0 * s_dt * s_ * s_;
 
                 let l_dt2 = 6.0 * l_dt * l_dt * l_;
                 let m_dt2 = 6.0 * m_dt * m_dt * m_;
