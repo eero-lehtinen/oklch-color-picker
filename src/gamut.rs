@@ -202,5 +202,24 @@ pub fn gamut_clip_preserve_chroma(rgba: LinearRgba) -> LinearRgba {
     let ll_clipped = ll0 * (1. - t) + t * ll;
     let cc_clipped = t * cc;
 
-    Oklaba::new(ll_clipped, cc_clipped * a_, cc_clipped * b_, rgba.alpha).into()
+    let mut result = LinearRgba::from(Oklaba::new(
+        ll_clipped,
+        cc_clipped * a_,
+        cc_clipped * b_,
+        rgba.alpha,
+    ));
+
+    result.red = result.red.clamp(0., 1.);
+    result.green = result.green.clamp(0., 1.);
+    result.blue = result.blue.clamp(0., 1.);
+
+    // Don't bother if the result is very close
+    if (rgba.red - result.red).abs() < 0.003
+        && (rgba.green - result.green).abs() < 0.003
+        && (rgba.blue - result.blue).abs() < 0.003
+    {
+        return rgba;
+    }
+
+    result
 }
