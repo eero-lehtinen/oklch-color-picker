@@ -1,9 +1,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::{
+    env,
     fmt::{Debug, Display},
     process::ExitCode,
     sync::{Arc, Mutex},
+    time::Instant,
 };
 
 use bevy_color::{ColorToComponents, ColorToPacked, LinearRgba, Oklcha, Srgba};
@@ -21,6 +23,7 @@ use formats::{
 };
 use gamut::gamut_clip_preserve_chroma;
 use gl_programs::{GlowProgram, ProgramKind};
+use once_cell::sync::Lazy;
 use rand::{rngs::SmallRng, Rng, SeedableRng};
 use strum::IntoEnumIterator;
 
@@ -30,7 +33,10 @@ mod gamut;
 mod gl_programs;
 
 fn main() -> ExitCode {
+    log_startup_init();
+
     let cli = Cli::parse();
+    log_startup_time("Cli parse");
 
     let (color, format, use_alpha) = match (cli.color, cli.format) {
         (Some(color_string), Some(cli_format)) => {
@@ -54,6 +60,7 @@ fn main() -> ExitCode {
         (None, Some(cli_format)) => (random_color(), cli_format.into(), true),
         (None, None) => (random_color(), CliColorFormat::default().into(), true),
     };
+    log_startup_time("Color parse");
 
     let native_options = eframe::NativeOptions {
         multisampling: 4,
@@ -71,6 +78,28 @@ fn main() -> ExitCode {
     .unwrap();
 
     ExitCode::SUCCESS
+}
+
+static INTERVAL_TIMER: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
+static STARTUP_TIMER: Lazy<Instant> = Lazy::new(Instant::now);
+static STARTUP_TIMER_ENABLED: Lazy<bool> = Lazy::new(|| env::var("STARTUP_TIMER").is_ok());
+fn log_startup_init() {
+    if *STARTUP_TIMER_ENABLED {
+        _ = STARTUP_TIMER.elapsed();
+        *INTERVAL_TIMER.lock().unwrap() = Instant::now();
+    }
+}
+fn log_startup_time(name: &str) {
+    if *STARTUP_TIMER_ENABLED {
+        let mut timer = INTERVAL_TIMER.lock().unwrap();
+        println!(
+            "{:<20}: {:>10.5}ms delta, {:>10.5}ms total",
+            name,
+            timer.elapsed().as_secs_f64() * 1000.,
+            STARTUP_TIMER.elapsed().as_secs_f64() * 1000.,
+        );
+        *timer = Instant::now();
+    }
 }
 
 fn random_color() -> Oklcha {
@@ -92,8 +121,7 @@ fn map(input: f32, from: (f32, f32), to: (f32, f32)) -> f32 {
         .clamp(to.0.min(to.1), to.1.max(to.0))
 }
 
-fn setup_custom_fonts(ctx: &egui::Context) {
-    // Start with the default fonts (we will be adding to them rather than replacing them).
+fn setup_egui_config(ctx: &egui::Context) {
     let mut fonts = egui::FontDefinitions::default();
 
     fonts.font_data.insert(
@@ -112,6 +140,8 @@ fn setup_custom_fonts(ctx: &egui::Context) {
         .entry(egui::FontFamily::Monospace)
         .or_default()
         .push("my_font".to_owned());
+
+    ctx.set_fonts(fonts);
 
     ctx.style_mut(|style| {
         style
@@ -136,9 +166,6 @@ fn setup_custom_fonts(ctx: &egui::Context) {
         style.visuals.widgets.inactive.bg_stroke =
             egui::Stroke::new(1.0, style.visuals.widgets.inactive.bg_fill);
     });
-
-    // Tell egui to use these fonts:
-    ctx.set_fonts(fonts);
 }
 
 struct App {
@@ -150,13 +177,22 @@ struct App {
     use_alpha: bool,
     programs: HashMap<ProgramKind, Arc<Mutex<GlowProgram>>>,
     input_text: HashMap<u8, String>,
+    first_frame: bool,
 }
 
 impl App {
     fn new(cc: &eframe::CreationContext<'_>, data: Arc<(Oklcha, ColorFormat, bool)>) -> Self {
-        setup_custom_fonts(&cc.egui_ctx);
+        log_startup_time("App new");
+        setup_egui_config(&cc.egui_ctx);
+        log_startup_time("Egui custom setup");
 
         let gl = cc.gl.as_ref().unwrap();
+
+        let programs = ProgramKind::iter()
+            .map(|kind| (kind, Arc::new(Mutex::new(GlowProgram::new(gl, kind)))))
+            .collect();
+
+        log_startup_time("Gl programs created");
 
         Self {
             previous_color: data.0,
@@ -165,10 +201,9 @@ impl App {
             prev_css: Default::default(),
             prev_raw: Default::default(),
             use_alpha: data.2,
-            programs: ProgramKind::iter()
-                .map(|kind| (kind, Arc::new(Mutex::new(GlowProgram::new(gl, kind)))))
-                .collect(),
+            programs,
             input_text: Default::default(),
+            first_frame: true,
         }
     }
 }
@@ -224,6 +259,11 @@ fn is_fallback(color: Oklcha) -> bool {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
+        if self.first_frame {
+            log_startup_time("First frame start");
+            self.first_frame = false;
+        }
+
         let frame = egui::Frame::central_panel(&ctx.style())
             .inner_margin(20.0)
             .stroke(Stroke::NONE);
@@ -624,6 +664,7 @@ impl eframe::App for App {
 
                                 strip.cell(|ui| {
                                     ui.vertical(|ui| {
+                                        ui.style_mut().spacing.item_spacing = Vec2::new(0.0, 0.0);
                                         canvas_final(ui).show(ui, |ui| {
                                             let rect = rect_allocate(ui);
                                             glow_paint(
