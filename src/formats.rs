@@ -82,9 +82,14 @@ pub fn format_color(c: Oklcha, fallback: Srgba, format: ColorFormat, use_alpha: 
         ColorFormat::Css(format) => match format {
             CssColorFormat::Hex => fallback.to_hex(),
             CssColorFormat::Rgb => {
-                let c = fallback.to_u8_array_no_alpha();
-                let a = css_alpha(fallback.alpha);
-                format!("rgb({} {} {}{})", c[0], c[1], c[2], a)
+                let c = fallback;
+                format!(
+                    "rgb({} {} {}{})",
+                    num(c.red * 255., 1),
+                    num(c.green * 255., 1),
+                    num(c.blue * 255., 1),
+                    css_alpha(fallback.alpha)
+                )
             }
             CssColorFormat::Oklch => {
                 format!(
@@ -224,7 +229,7 @@ fn css_num<'a>(iter: &mut impl Iterator<Item = &'a str>) -> Option<CssNum> {
     parse_js_float(s).map(CssNum::Num)
 }
 
-fn css_num_rgb<'a>(iter: &mut impl Iterator<Item = &'a str>) -> Option<f32> {
+fn css_num_255<'a>(iter: &mut impl Iterator<Item = &'a str>) -> Option<f32> {
     match css_num(iter)? {
         CssNum::Num(n) => n / 255.,
         CssNum::Percent(p) => p / 100.,
@@ -277,9 +282,9 @@ pub fn parse_color(s: &str, input_format: ColorFormat) -> Option<(Oklcha, bool)>
                 CssColorFormat::Rgb => {
                     let mut c = Srgba::WHITE;
                     let iter = &mut css_words(css_named(s, "rgb")?);
-                    c.red = css_num_rgb(iter)?;
-                    c.green = css_num_rgb(iter)?;
-                    c.blue = css_num_rgb(iter)?;
+                    c.red = css_num_255(iter)?;
+                    c.green = css_num_255(iter)?;
+                    c.blue = css_num_255(iter)?;
                     c.alpha = parse_alpha(iter)?;
                     c.into()
                 }
