@@ -229,9 +229,9 @@ fn canvas_slider(ui: &mut egui::Ui) -> egui::Frame {
         .inner_margin(0.0)
         .outer_margin(egui::Margin {
             left: 10.,
-            right: 4.,
-            bottom: 4.,
-            top: 4.,
+            right: 14.,
+            bottom: 6.,
+            top: 6.,
         })
         .rounding(0.0)
         .stroke(Stroke::NONE)
@@ -434,9 +434,12 @@ impl eframe::App for App {
                             painter.rect(
                                 egui::Rect::from_center_size(
                                     center,
-                                    egui::vec2(8., rect.height() + 4.),
+                                    egui::vec2(
+                                        (rect.width() / 90.).clamp(9., 22.),
+                                        rect.height() + 6.,
+                                    ),
                                 ),
-                                0.,
+                                3.,
                                 fallback_egui_color,
                                 Stroke::new(2.0, LINE_COLOR2),
                             );
@@ -447,27 +450,12 @@ impl eframe::App for App {
                             ui.add_sized(Vec2::new(12., 26.), label);
                         };
                         builder.sizes(Size::remainder(), 4).vertical(|mut strip| {
+                            let field_width = Vec2::new(100., 0.);
                             strip.cell(|ui| {
                                 ui.horizontal_centered(|ui| {
-                                    show_label(ui, "L");
-                                    let get_set = |v: Option<f64>| match v {
-                                        Some(v) => {
-                                            self.color.lightness = v as f32;
-                                            v
-                                        }
-                                        None => self.color.lightness as f64,
-                                    };
-                                    ui.add_sized(
-                                        input_size,
-                                        DragValue::from_get_set(get_set)
-                                            .speed(1. * 0.001)
-                                            .range(0.0..=1.0)
-                                            .max_decimals(4),
-                                    );
-
                                     canvas_slider(ui).show(ui, |ui| {
                                         let (rect, response) = ui.allocate_exact_size(
-                                            ui.available_size(),
+                                            ui.available_size() - field_width,
                                             egui::Sense::drag(),
                                         );
 
@@ -485,28 +473,29 @@ impl eframe::App for App {
                                         );
                                         draw_slider_line(ui, rect, self.color.lightness);
                                     });
-                                });
-                            });
-                            strip.cell(|ui| {
-                                ui.horizontal_centered(|ui| {
-                                    show_label(ui, "C");
+
                                     let get_set = |v: Option<f64>| match v {
                                         Some(v) => {
-                                            self.color.chroma = v as f32;
+                                            self.color.lightness = v as f32;
                                             v
                                         }
-                                        None => self.color.chroma as f64,
+                                        None => self.color.lightness as f64,
                                     };
                                     ui.add_sized(
                                         input_size,
                                         DragValue::from_get_set(get_set)
-                                            .speed(CHROMA_MAX * 0.001)
-                                            .range(0.0..=CHROMA_MAX)
+                                            .speed(1. * 0.001)
+                                            .range(0.0..=1.0)
                                             .max_decimals(4),
                                     );
+                                    show_label(ui, "L");
+                                });
+                            });
+                            strip.cell(|ui| {
+                                ui.horizontal_centered(|ui| {
                                     canvas_slider(ui).show(ui, |ui| {
                                         let (rect, response) = ui.allocate_exact_size(
-                                            ui.available_size(),
+                                            ui.available_size() - field_width,
                                             egui::Sense::drag(),
                                         );
 
@@ -527,30 +516,29 @@ impl eframe::App for App {
                                         );
                                         draw_slider_line(ui, rect, self.color.chroma / CHROMA_MAX);
                                     });
+                                    let get_set = |v: Option<f64>| match v {
+                                        Some(v) => {
+                                            self.color.chroma = v as f32;
+                                            v
+                                        }
+                                        None => self.color.chroma as f64,
+                                    };
+                                    ui.add_sized(
+                                        input_size,
+                                        DragValue::from_get_set(get_set)
+                                            .speed(CHROMA_MAX * 0.001)
+                                            .range(0.0..=CHROMA_MAX)
+                                            .max_decimals(4),
+                                    );
+                                    show_label(ui, "C");
                                 });
                             });
 
                             strip.cell(|ui| {
                                 ui.horizontal_centered(|ui| {
-                                    show_label(ui, "H");
-                                    let get_set = |v: Option<f64>| match v {
-                                        Some(v) => {
-                                            self.color.hue = v as f32;
-                                            v
-                                        }
-                                        None => self.color.hue as f64,
-                                    };
-                                    ui.add_sized(
-                                        input_size,
-                                        DragValue::from_get_set(get_set)
-                                            .speed(360. * 0.001)
-                                            .range(0.0..=360.0)
-                                            .max_decimals(2),
-                                    );
-
                                     canvas_slider(ui).show(ui, |ui| {
                                         let (rect, response) = ui.allocate_exact_size(
-                                            ui.available_size(),
+                                            ui.available_size() - field_width,
                                             egui::Sense::drag(),
                                         );
 
@@ -568,29 +556,30 @@ impl eframe::App for App {
                                         );
                                         draw_slider_line(ui, rect, self.color.hue / 360.);
                                     });
+
+                                    let get_set = |v: Option<f64>| match v {
+                                        Some(v) => {
+                                            self.color.hue = v as f32;
+                                            v
+                                        }
+                                        None => self.color.hue as f64,
+                                    };
+                                    ui.add_sized(
+                                        input_size,
+                                        DragValue::from_get_set(get_set)
+                                            .speed(360. * 0.001)
+                                            .range(0.0..=360.0)
+                                            .max_decimals(2),
+                                    );
+                                    show_label(ui, "H");
                                 });
                             });
 
                             strip.cell(|ui| {
                                 ui.horizontal_centered(|ui| {
-                                    show_label(ui, "A");
-                                    let get_set = |v: Option<f64>| match v {
-                                        Some(v) => {
-                                            self.color.alpha = v as f32;
-                                            v
-                                        }
-                                        None => self.color.alpha as f64,
-                                    };
-                                    ui.add_sized(
-                                        input_size,
-                                        DragValue::from_get_set(get_set)
-                                            .speed(1. * 0.001)
-                                            .range(0.0..=1.0)
-                                            .max_decimals(2),
-                                    );
                                     canvas_slider(ui).show(ui, |ui| {
                                         let (rect, response) = ui.allocate_exact_size(
-                                            ui.available_size(),
+                                            ui.available_size() - field_width,
                                             egui::Sense::drag(),
                                         );
 
@@ -608,6 +597,21 @@ impl eframe::App for App {
                                         );
                                         draw_slider_line(ui, rect, self.color.alpha);
                                     });
+                                    let get_set = |v: Option<f64>| match v {
+                                        Some(v) => {
+                                            self.color.alpha = v as f32;
+                                            v
+                                        }
+                                        None => self.color.alpha as f64,
+                                    };
+                                    ui.add_sized(
+                                        input_size,
+                                        DragValue::from_get_set(get_set)
+                                            .speed(1. * 0.001)
+                                            .range(0.0..=1.0)
+                                            .max_decimals(2),
+                                    );
+                                    show_label(ui, "A");
                                 });
                             });
                         });
