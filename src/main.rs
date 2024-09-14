@@ -21,7 +21,7 @@ use formats::{
     format_color, parse_color, parse_color_unknown_format, ColorFormat, CssColorFormat,
     RawColorFormat,
 };
-use gamut::gamut_clip_preserve_chroma;
+use gamut::{gamut_clip_preserve_chroma, Oklrcha};
 use gl_programs::{GlowProgram, ProgramKind};
 use once_cell::sync::Lazy;
 use rand::{rngs::SmallRng, Rng, SeedableRng};
@@ -169,8 +169,8 @@ fn setup_egui_config(ctx: &egui::Context) {
 }
 
 struct App {
-    previous_color: Oklcha,
-    color: Oklcha,
+    previous_color: Oklrcha,
+    color: Oklrcha,
     format: ColorFormat,
     prev_css: CssColorFormat,
     prev_raw: RawColorFormat,
@@ -194,9 +194,11 @@ impl App {
 
         log_startup_time("Gl programs created");
 
+        let color = data.0.into();
+
         Self {
-            previous_color: data.0,
-            color: data.0,
+            previous_color: color,
+            color,
             format: data.1,
             prev_css: Default::default(),
             prev_raw: Default::default(),
@@ -213,15 +215,20 @@ const CHROMA_MAX: f32 = 0.33;
 const LINE_COLOR: Color32 = Color32::from_gray(30);
 const LINE_COLOR2: Color32 = Color32::from_gray(220);
 
+const MID_GRAY: egui::Rgba =
+    egui::Rgba::from_rgba_premultiplied(0.18406294, 0.18406294, 0.18406294, 1.);
+
 fn canvas_picker(ui: &mut egui::Ui) -> egui::Frame {
     egui::Frame::canvas(ui.style())
         .inner_margin(0.0)
         .outer_margin(egui::Margin {
-            bottom: 8.,
-            ..Default::default()
+            bottom: 9.,
+            left: 9.,
+            right: 9.,
+            top: 0.,
         })
-        .rounding(0.0)
-        .stroke(Stroke::NONE)
+        .rounding(0.)
+        .stroke(Stroke::new(14.0, MID_GRAY))
 }
 
 fn canvas_slider(ui: &mut egui::Ui) -> egui::Frame {
@@ -233,8 +240,8 @@ fn canvas_slider(ui: &mut egui::Ui) -> egui::Frame {
             bottom: 6.,
             top: 6.,
         })
-        .rounding(0.0)
-        .stroke(Stroke::NONE)
+        .rounding(0.)
+        .stroke(Stroke::new(7.0, MID_GRAY))
 }
 
 fn canvas_final(ui: &mut egui::Ui) -> egui::Frame {
@@ -243,11 +250,11 @@ fn canvas_final(ui: &mut egui::Ui) -> egui::Frame {
         .outer_margin(egui::Margin {
             left: 0.,
             right: 0.,
-            bottom: 4.,
+            bottom: 12.,
             top: 4.,
         })
         .rounding(0.0)
-        .stroke(Stroke::NONE)
+        .stroke(Stroke::new(10.0, MID_GRAY))
 }
 
 fn is_fallback(color: Oklcha) -> bool {
@@ -270,17 +277,17 @@ impl eframe::App for App {
 
         let central_panel = egui::CentralPanel::default().frame(frame);
 
-        let fallback_color = Srgba::from(gamut_clip_preserve_chroma(self.color.into()));
+        let fallback_color = gamut_clip_preserve_chroma(Oklcha::from(self.color).into());
 
-        let fallback_u8 = fallback_color.to_u8_array_no_alpha();
+        let fallback_u8 = Srgba::from(fallback_color).to_u8_array();
         let fallback_egui_color =
             egui::Color32::from_rgb(fallback_u8[0], fallback_u8[1], fallback_u8[2]);
 
         let previous_fallback_color =
-            Srgba::from(gamut_clip_preserve_chroma(self.previous_color.into()));
+            gamut_clip_preserve_chroma(Oklcha::from(self.previous_color).into());
 
         let glow_paint =
-            |ui: &mut egui::Ui, program: ProgramKind, color: Oklcha, width: f32, extra_w: f32| {
+            |ui: &mut egui::Ui, program: ProgramKind, color: Oklrcha, width: f32, extra_w: f32| {
                 let p = Arc::clone(&self.programs[&program]);
                 let mut rect = ui.min_rect();
                 if extra_w > 0. {
@@ -294,8 +301,8 @@ impl eframe::App for App {
                         p.lock().unwrap().paint(
                             painter.gl(),
                             color,
-                            fallback_color.to_f32_array(),
-                            previous_fallback_color.to_f32_array(),
+                            fallback_color,
+                            previous_fallback_color,
                             width,
                         );
                     })),
@@ -320,9 +327,9 @@ impl eframe::App for App {
                     Stroke::new(width, color),
                 ));
                 if !name.is_empty() {
-                    let label_center = Pos2::new(pos, rect.bottom() + 7.);
+                    let label_center = Pos2::new(pos, rect.bottom() + 12.);
                     let label_rect =
-                        egui::Rect::from_center_size(label_center, egui::vec2(10.0, 10.0));
+                        egui::Rect::from_center_size(label_center, egui::vec2(16.0, 10.0));
                     labels.push((label_rect, name.to_owned()));
                 }
             } else {
@@ -334,7 +341,7 @@ impl eframe::App for App {
                 ));
 
                 if !name.is_empty() {
-                    let label_center = Pos2::new(rect.left() - 10., pos - 4.);
+                    let label_center = Pos2::new(rect.left() - 17., pos - 4.);
                     let label_rect =
                         egui::Rect::from_center_size(label_center, egui::vec2(10.0, 10.0));
                     labels.push((label_rect, name.to_owned()));
@@ -362,7 +369,7 @@ impl eframe::App for App {
                                     );
 
                                     if let Some(pos) = response.interact_pointer_pos() {
-                                        self.color.lightness =
+                                        self.color.lightness_r =
                                             map(pos.x, (rect.left(), rect.right()), (0., 1.));
                                         self.color.chroma = map(
                                             pos.y,
@@ -379,8 +386,8 @@ impl eframe::App for App {
                                         0.,
                                     );
 
-                                    let l = self.color.lightness;
-                                    draw_line(ui, true, false, rect, l, "L", &mut labels);
+                                    let l = self.color.lightness_r;
+                                    draw_line(ui, true, false, rect, l, "Lr", &mut labels);
                                     let c = self.color.chroma / CHROMA_MAX;
                                     draw_line(ui, false, false, rect, c, "C", &mut labels);
                                 });
@@ -460,7 +467,7 @@ impl eframe::App for App {
                                         );
 
                                         if let Some(pos) = response.interact_pointer_pos() {
-                                            self.color.lightness =
+                                            self.color.lightness_r =
                                                 map(pos.x, (rect.left(), rect.right()), (0., 1.));
                                         }
 
@@ -471,15 +478,15 @@ impl eframe::App for App {
                                             rect.aspect_ratio(),
                                             0.,
                                         );
-                                        draw_slider_line(ui, rect, self.color.lightness);
+                                        draw_slider_line(ui, rect, self.color.lightness_r);
                                     });
 
                                     let get_set = |v: Option<f64>| match v {
                                         Some(v) => {
-                                            self.color.lightness = v as f32;
+                                            self.color.lightness_r = v as f32;
                                             v
                                         }
-                                        None => self.color.lightness as f64,
+                                        None => self.color.lightness_r as f64,
                                     };
                                     ui.add_sized(
                                         input_size,
@@ -488,7 +495,7 @@ impl eframe::App for App {
                                             .range(0.0..=1.0)
                                             .max_decimals(4),
                                     );
-                                    show_label(ui, "L");
+                                    show_label(ui, "Lr");
                                 });
                             });
                             strip.cell(|ui| {
@@ -639,8 +646,8 @@ impl eframe::App for App {
 
                                 let mut show_color_edit =
                                     |ui: &mut egui::Ui,
-                                     color: &mut Oklcha,
-                                     fallback: Srgba,
+                                     color: &mut Oklrcha,
+                                     fallback: LinearRgba,
                                      id: u8| {
                                         let mut text = if let Some(text) = self.input_text.get(&id)
                                         {
@@ -648,7 +655,7 @@ impl eframe::App for App {
                                                 parse_color(text, self.format)
                                             {
                                                 self.use_alpha = use_alpha;
-                                                *color = c;
+                                                *color = c.into();
                                             } else {
                                                 ui.style_mut().visuals.selection.stroke =
                                                     egui::Stroke::new(
@@ -659,12 +666,7 @@ impl eframe::App for App {
 
                                             text.clone()
                                         } else {
-                                            format_color(
-                                                *color,
-                                                fallback,
-                                                self.format,
-                                                self.use_alpha,
-                                            )
+                                            format_color(fallback, self.format, self.use_alpha)
                                         };
 
                                         let output = egui::TextEdit::singleline(&mut text)
@@ -700,7 +702,7 @@ impl eframe::App for App {
                                         );
                                         ui.label(format!(
                                             "Previous Color{}",
-                                            if is_fallback(self.previous_color) {
+                                            if is_fallback(self.previous_color.into()) {
                                                 " (fallback)"
                                             } else {
                                                 ""
@@ -725,7 +727,7 @@ impl eframe::App for App {
                                         show_color_edit(ui, &mut self.color, fallback_color, 1);
                                         ui.label(format!(
                                             "New Color{}",
-                                            if is_fallback(self.color) {
+                                            if is_fallback(self.color.into()) {
                                                 " (fallback)"
                                             } else {
                                                 ""
@@ -777,7 +779,6 @@ impl eframe::App for App {
                                                 println!(
                                                     "{}",
                                                     format_color(
-                                                        self.color,
                                                         fallback_color,
                                                         self.format,
                                                         self.use_alpha

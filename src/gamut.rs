@@ -1,4 +1,6 @@
-use bevy_color::{LinearRgba, Oklaba};
+#![allow(non_upper_case_globals)]
+
+use bevy_color::{LinearRgba, Oklaba, Oklcha};
 
 #[allow(clippy::excessive_precision)]
 pub fn compute_max_saturation(a: f32, b: f32) -> f32 {
@@ -222,4 +224,59 @@ pub fn gamut_clip_preserve_chroma(rgba: LinearRgba) -> LinearRgba {
     }
 
     result
+}
+
+pub fn lr_to_l(lr: f32) -> f32 {
+    const k1: f32 = 0.206;
+    const k2: f32 = 0.03;
+    const k3: f32 = (1. + k1) / (1. + k2);
+    (lr * (lr + k1)) / (k3 * (lr + k2))
+}
+
+pub fn l_to_lr(l: f32) -> f32 {
+    const k1: f32 = 0.206;
+    const k2: f32 = 0.03;
+    const k3: f32 = (1. + k1) / (1. + k2);
+    0.5 * (k3 * l - k1 + ((k3 * l - k1) * (k3 * l - k1) + 4. * k2 * k3 * l).sqrt())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Oklrcha {
+    pub lightness_r: f32,
+    pub chroma: f32,
+    pub hue: f32,
+    pub alpha: f32,
+}
+
+impl Oklrcha {
+    pub fn new(lightness_r: f32, chroma: f32, hue: f32, alpha: f32) -> Self {
+        Self {
+            lightness_r,
+            chroma,
+            hue,
+            alpha,
+        }
+    }
+}
+
+impl From<Oklrcha> for Oklcha {
+    fn from(oklrcha: Oklrcha) -> Self {
+        Oklcha::new(
+            lr_to_l(oklrcha.lightness_r),
+            oklrcha.chroma,
+            oklrcha.hue,
+            oklrcha.alpha,
+        )
+    }
+}
+
+impl From<Oklcha> for Oklrcha {
+    fn from(oklcha: Oklcha) -> Self {
+        Oklrcha {
+            lightness_r: l_to_lr(oklcha.lightness),
+            chroma: oklcha.chroma,
+            hue: oklcha.hue,
+            alpha: oklcha.alpha,
+        }
+    }
 }

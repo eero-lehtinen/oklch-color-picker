@@ -77,12 +77,12 @@ fn raw_alpha_u8(alpha: u8, use_alpha: bool) -> String {
     }
 }
 
-pub fn format_color(c: Oklcha, fallback: Srgba, format: ColorFormat, use_alpha: bool) -> String {
+pub fn format_color(fallback: LinearRgba, format: ColorFormat, use_alpha: bool) -> String {
     match format {
         ColorFormat::Css(format) => match format {
-            CssColorFormat::Hex => fallback.to_hex(),
+            CssColorFormat::Hex => Srgba::from(fallback).to_hex(),
             CssColorFormat::Rgb => {
-                let c = fallback;
+                let c = Srgba::from(fallback);
                 format!(
                     "rgb({} {} {}{})",
                     num(c.red * 255., 1),
@@ -92,6 +92,7 @@ pub fn format_color(c: Oklcha, fallback: Srgba, format: ColorFormat, use_alpha: 
                 )
             }
             CssColorFormat::Oklch => {
+                let c = Oklcha::from(fallback);
                 format!(
                     "oklch({} {} {}{})",
                     num(c.lightness, 4),
@@ -113,7 +114,7 @@ pub fn format_color(c: Oklcha, fallback: Srgba, format: ColorFormat, use_alpha: 
         },
         ColorFormat::Raw(format) => match format {
             RawColorFormat::Rgb => {
-                let c = fallback.to_u8_array();
+                let c = Srgba::from(fallback).to_u8_array();
                 format!(
                     "{}, {}, {}{}",
                     c[0],
@@ -123,7 +124,7 @@ pub fn format_color(c: Oklcha, fallback: Srgba, format: ColorFormat, use_alpha: 
                 )
             }
             RawColorFormat::RgbFloat => {
-                let c = fallback;
+                let c = Srgba::from(fallback);
                 format!(
                     "{:?}, {:?}, {:?}{}",
                     num(c.red, 4),
@@ -133,7 +134,7 @@ pub fn format_color(c: Oklcha, fallback: Srgba, format: ColorFormat, use_alpha: 
                 )
             }
             RawColorFormat::RgbLinear => {
-                let c = LinearRgba::from(fallback);
+                let c = fallback;
                 format!(
                     "{:?}, {:?}, {:?}{}",
                     num(c.red, 4),
@@ -143,6 +144,7 @@ pub fn format_color(c: Oklcha, fallback: Srgba, format: ColorFormat, use_alpha: 
                 )
             }
             RawColorFormat::Oklch => {
+                let c = Oklcha::from(fallback);
                 format!(
                     "{:?}, {:?}, {:?}{}",
                     num(c.lightness, 4),

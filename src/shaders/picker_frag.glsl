@@ -4,8 +4,8 @@ in vec2 uv;
 uniform float hue;
 
 void main() {
-	float chroma = (uv.y) * 0.33;
-	float lightness = uv.x;
+	float chroma = uv.y * 0.33;
+	float lightness = lr_to_l(uv.x);
 
 	vec3 lch = vec3(lightness, chroma, hue / 360.);
 	bool valid;

@@ -1,6 +1,8 @@
-use bevy_color::Oklcha;
+use bevy_color::{ColorToComponents, LinearRgba, Srgba};
 use eframe::glow::{self, HasContext};
 use strum::EnumIter;
+
+use crate::gamut::{lr_to_l, Oklrcha};
 
 #[derive(Default, Clone, Copy, EnumIter, Hash, PartialEq, Eq)]
 pub enum ProgramKind {
@@ -115,9 +117,9 @@ impl GlowProgram {
     pub fn paint(
         &self,
         gl: &glow::Context,
-        color: Oklcha,
-        fallback_color: [f32; 4],
-        previous_fallback_color: [f32; 4],
+        color: Oklrcha,
+        fallback_color: LinearRgba,
+        previous_fallback_color: LinearRgba,
         width: f32,
     ) {
         unsafe {
@@ -130,9 +132,7 @@ impl GlowProgram {
                 ProgramKind::Picker => {
                     set_uni_f32("hue", color.hue);
                 }
-                ProgramKind::Picker2 => {
-                    set_uni_f32("lightness", color.lightness);
-                }
+                ProgramKind::Picker2 => set_uni_f32("lightness", lr_to_l(color.lightness_r)),
                 ProgramKind::Hue => {}
                 ProgramKind::Lightness => {
                     set_uni_f32("hue", color.hue);
@@ -140,24 +140,24 @@ impl GlowProgram {
                 }
                 ProgramKind::Chroma => {
                     set_uni_f32("hue", color.hue);
-                    set_uni_f32("lightness", color.lightness);
+                    set_uni_f32("lightness", lr_to_l(color.lightness_r));
                 }
                 ProgramKind::Alpha => {
                     gl.uniform_3_f32_slice(
                         gl.get_uniform_location(self.program, "color").as_ref(),
-                        &fallback_color[0..3][..],
+                        &Srgba::from(fallback_color).to_f32_array_no_alpha()[..],
                     );
                 }
                 ProgramKind::Final => {
                     gl.uniform_4_f32_slice(
                         gl.get_uniform_location(self.program, "color").as_ref(),
-                        &fallback_color[..],
+                        &Srgba::from(fallback_color).to_f32_array()[..],
                     );
                 }
                 ProgramKind::FinalPrevious => {
                     gl.uniform_4_f32_slice(
                         gl.get_uniform_location(self.program, "color").as_ref(),
-                        &previous_fallback_color[..],
+                        &Srgba::from(previous_fallback_color).to_f32_array()[..],
                     );
                 }
             }
