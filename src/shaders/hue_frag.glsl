@@ -15,5 +15,7 @@ void main() {
 	bool valid;
 	vec3 rgb = oklch_to_srgb(lch, valid);
 
+	rgb += screen_space_dither(gl_FragCoord.xy);
+
     FragColor = vec4(rgb, 1.);
 }

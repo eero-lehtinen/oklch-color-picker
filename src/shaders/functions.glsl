@@ -52,11 +52,9 @@ vec3 oklch_to_srgb(vec3 lch, out bool valid) {
 	return to_srgb(rgb);
 }
 
-vec3 blend(vec3 below, vec4 above) {
-	return above.a * above.rgb + (1.0 - above.a) * below;
+vec4 blend(vec3 below, vec4 above) {
+	return vec4(above.a * above.rgb + (1.0 - above.a) * below, 1.0);
 }
-
-
 
 float lr_to_l(float lr) {
 	float k1 = 0.206;
@@ -72,5 +70,11 @@ float l_to_lr(float l) {
 	return 0.5 * (k3 * l - k1 + sqrt((k3 * l - k1) * (k3 * l - k1) + 4. * k2 * k3 * l));
 }
 
+vec3 screen_space_dither(vec2 frag_coord) {
+    vec3 dither = vec3(dot(vec2(171.0, 231.0), frag_coord)).xxx;
+    dither = fract(dither.rgb / vec3(103.0, 71.0, 97.0));
+    return (dither - 0.5) / 255.0;
+}
 
 const vec3 BG = to_srgb(oklab_to_linear_srgb(oklch_to_oklab(vec3(lr_to_l(0.5), 0.0, 0.0))));
+

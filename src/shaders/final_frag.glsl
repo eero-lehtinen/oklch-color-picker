@@ -10,5 +10,9 @@ void main() {
 
 	vec3 cb = vec3(mix(BG, vec3(0.68), mask));
 
-    FragColor = vec4(blend(cb, color), 1.0);
+	vec4 color = blend(cb, color);
+
+	color.rgb += screen_space_dither(gl_FragCoord.xy);
+
+    FragColor = color;
 }

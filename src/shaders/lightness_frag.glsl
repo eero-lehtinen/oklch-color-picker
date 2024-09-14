@@ -14,5 +14,7 @@ void main() {
 
 	vec3 color = valid ? rgb : BG;
 
+	color += screen_space_dither(gl_FragCoord.xy);
+
     FragColor = vec4(color, 1.);
 }
