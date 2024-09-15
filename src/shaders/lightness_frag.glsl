@@ -6,7 +6,7 @@ uniform float chroma;
 
 
 void main() {
-	float lightness = uv.x;
+	float lightness = lr_to_l(uv.x);
 
 	vec3 lch = vec3(lightness, chroma, hue / 360.);
 	bool valid;

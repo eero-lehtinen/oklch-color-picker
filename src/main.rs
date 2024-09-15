@@ -448,7 +448,7 @@ impl eframe::App for App {
                                 ),
                                 3.,
                                 fallback_egui_color,
-                                Stroke::new(2.0, LINE_COLOR2),
+                                Stroke::new(3.0, LINE_COLOR2),
                             );
                         };
                         let input_size = Vec2::new(66., 26.);
