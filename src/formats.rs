@@ -82,12 +82,12 @@ pub fn format_color(fallback: LinearRgba, format: ColorFormat, use_alpha: bool) 
         ColorFormat::Css(format) => match format {
             CssColorFormat::Hex => Srgba::from(fallback).to_hex(),
             CssColorFormat::Rgb => {
-                let c = Srgba::from(fallback);
+                let c = Srgba::from(fallback).to_u8_array_no_alpha();
                 format!(
                     "rgb({} {} {}{})",
-                    num(c.red * 255., 1),
-                    num(c.green * 255., 1),
-                    num(c.blue * 255., 1),
+                    c[0],
+                    c[1],
+                    c[2],
                     css_alpha(fallback.alpha)
                 )
             }
