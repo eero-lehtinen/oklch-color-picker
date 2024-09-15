@@ -2401,7 +2401,7 @@ dependencies = [
 
 [[package]]
 name = "oklch-color-picker"
-version = "1.2.3"
+version = "1.2.4"
 dependencies = [
  "bevy_color",
  "clap",
