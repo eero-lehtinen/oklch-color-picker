@@ -55,7 +55,7 @@ fn num(v: f32, decimals: i32) -> f32 {
 
 fn css_alpha(alpha: f32) -> String {
     if alpha < 1. {
-        format!(" / {}", num(alpha, 4))
+        format!(" / {}%", num(alpha * 100., 1))
     } else {
         String::new()
     }
