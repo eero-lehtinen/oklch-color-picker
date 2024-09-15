@@ -201,7 +201,7 @@ pub fn css_named<'a>(s: &'a str, name: &str) -> Option<&'a str> {
     s.strip_prefix(name)?.strip_prefix('(')?.strip_suffix(')')
 }
 
-static CSS_WORDS_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r#"[\d\.%]+|\/"#).unwrap());
+static CSS_WORDS_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r#"[\d\.%]+"#).unwrap());
 
 pub fn css_words(s: &str) -> impl Iterator<Item = &str> {
     CSS_WORDS_REGEX
@@ -240,14 +240,7 @@ fn css_num_255<'a>(iter: &mut impl Iterator<Item = &'a str>) -> Option<f32> {
 }
 
 fn parse_alpha<'a>(iter: &mut impl Iterator<Item = &'a str>) -> Option<f32> {
-    let Some(slash) = iter.next() else {
-        // If there is not alpha, just return 1.
-        return Some(1.);
-    };
-    if slash != "/" {
-        return None;
-    }
-    Some(css_num(iter)?.apply())
+    Some(css_num(iter).map_or(1., |n| n.apply()))
 }
 
 pub fn parse_color_unknown_format(s: &str) -> Option<(Oklcha, ColorFormat, bool)> {
@@ -373,6 +366,14 @@ mod tests {
     fn rgb3() {
         assert_eq!(
             parse_color("rgb(   170 187 204/.0%  )", CssColorFormat::Rgb.into()).unwrap(),
+            (Srgba::rgba_u8(170, 187, 204, 0).into(), true)
+        );
+    }
+
+    #[test]
+    fn allow_any_arbitrary_separator() {
+        assert_eq!(
+            parse_color("rgb(170a 187b 204 , 0)", CssColorFormat::Rgb.into()).unwrap(),
             (Srgba::rgba_u8(170, 187, 204, 0).into(), true)
         );
     }
