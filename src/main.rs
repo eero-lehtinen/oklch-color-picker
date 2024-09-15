@@ -257,13 +257,6 @@ fn canvas_final(ui: &mut egui::Ui) -> egui::Frame {
         .stroke(Stroke::new(10.0, MID_GRAY))
 }
 
-fn is_fallback(color: Oklcha) -> bool {
-    LinearRgba::from(color)
-        .to_f32_array()
-        .iter()
-        .any(|x| *x < 0. || *x > 1.)
-}
-
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
         if self.first_frame {
@@ -277,13 +270,14 @@ impl eframe::App for App {
 
         let central_panel = egui::CentralPanel::default().frame(frame);
 
-        let fallback_color = gamut_clip_preserve_chroma(Oklcha::from(self.color).into());
+        let (fallback_color, is_fallback) =
+            gamut_clip_preserve_chroma(Oklcha::from(self.color).into());
 
         let fallback_u8 = Srgba::from(fallback_color).to_u8_array();
         let fallback_egui_color =
             egui::Color32::from_rgb(fallback_u8[0], fallback_u8[1], fallback_u8[2]);
 
-        let previous_fallback_color =
+        let (previous_fallback_color, is_previous_fallback) =
             gamut_clip_preserve_chroma(Oklcha::from(self.previous_color).into());
 
         let glow_paint =
@@ -702,7 +696,7 @@ impl eframe::App for App {
                                         );
                                         ui.label(format!(
                                             "Previous Color{}",
-                                            if is_fallback(self.previous_color.into()) {
+                                            if is_previous_fallback {
                                                 " (fallback)"
                                             } else {
                                                 ""
@@ -727,11 +721,7 @@ impl eframe::App for App {
                                         show_color_edit(ui, &mut self.color, fallback_color, 1);
                                         ui.label(format!(
                                             "New Color{}",
-                                            if is_fallback(self.color.into()) {
-                                                " (fallback)"
-                                            } else {
-                                                ""
-                                            }
+                                            if is_fallback { " (fallback)" } else { "" }
                                         ));
                                     });
                                 });
