@@ -8,7 +8,7 @@ use std::{
     time::Instant,
 };
 
-use bevy_color::{ColorToComponents, ColorToPacked, LinearRgba, Oklcha, Srgba};
+use bevy_color::{ColorToPacked, LinearRgba, Oklcha, Srgba};
 use clap::Parser;
 use cli::{Cli, CliColorFormat};
 use eframe::{
