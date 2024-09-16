@@ -15,3 +15,5 @@
 - Hardware accelerated for maximum smoothness and high resolutions
  
 Check out the neovim plugin that this picker was made for [eero-lehtinen/oklch-color-picker.nvim](https://github.com/eero-lehtinen/oklch-color-picker.nvim).
+
+Inspired by https://oklch.com/.
