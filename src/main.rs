@@ -587,6 +587,7 @@ impl eframe::App for App {
                                         if let Some(pos) = response.interact_pointer_pos() {
                                             self.color.alpha =
                                                 map(pos.x, (rect.left(), rect.right()), (0., 1.));
+                                            self.use_alpha = true;
                                         }
 
                                         glow_paint(
@@ -601,6 +602,7 @@ impl eframe::App for App {
                                     let get_set = |v: Option<f64>| match v {
                                         Some(v) => {
                                             self.color.alpha = v as f32;
+                                            self.use_alpha = true;
                                             v
                                         }
                                         None => self.color.alpha as f64,
@@ -741,6 +743,7 @@ impl eframe::App for App {
                                         style.spacing.button_padding = egui::vec2(4.0, 3.0);
 
                                         let App {
+                                            color,
                                             format,
                                             prev_css,
                                             prev_raw,
@@ -748,7 +751,7 @@ impl eframe::App for App {
                                             ..
                                         } = self;
                                         color_format_input(
-                                            ui, format, use_alpha, prev_css, prev_raw,
+                                            ui, format, use_alpha, prev_css, prev_raw, color,
                                         );
 
                                         ui.add_space(1.);
@@ -805,6 +808,7 @@ fn color_format_input(
     use_alpha: &mut bool,
     prev_css: &mut CssColorFormat,
     prev_raw: &mut RawColorFormat,
+    color: &mut Oklrcha,
 ) {
     let mut raw = matches!(*value, ColorFormat::Raw(_));
     let old_raw = raw;
@@ -820,8 +824,13 @@ fn color_format_input(
                 ui.selectable_value(&mut raw, true, text(true));
             });
 
-        if raw {
-            ui.add(egui::Checkbox::new(use_alpha, RichText::new("Alpha")));
+        if raw
+            && ui
+                .add(egui::Checkbox::new(use_alpha, RichText::new("Alpha")))
+                .clicked()
+            && !*use_alpha
+        {
+            color.alpha = 1.;
         }
     });
 
