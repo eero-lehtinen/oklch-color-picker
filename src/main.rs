@@ -9,7 +9,7 @@ use std::{
 };
 
 use bevy_color::{ColorToPacked, LinearRgba, Oklcha, Srgba};
-use clap::Parser;
+use clap::Parser as _;
 use cli::{Cli, CliColorFormat};
 use eframe::{
     egui::{self, ahash::HashMap, Color32, DragValue, Pos2, RichText, Stroke, Vec2},
@@ -48,14 +48,14 @@ fn main() -> ExitCode {
                 return ExitCode::FAILURE;
             };
 
-            (color, cli_format.into(), use_alpha)
+            (color.into(), cli_format.into(), use_alpha)
         }
         (Some(color_string), None) => {
             let Some((color, format, use_alpha)) = parse_color_unknown_format(&color_string) else {
                 eprintln!("Could not detect format for color '{}'", color_string);
                 return ExitCode::FAILURE;
             };
-            (color, format, use_alpha)
+            (color.into(), format, use_alpha)
         }
         (None, Some(cli_format)) => (random_color(), cli_format.into(), true),
         (None, None) => (random_color(), CliColorFormat::default().into(), true),
@@ -651,7 +651,7 @@ impl eframe::App for App {
                                                 parse_color(text, self.format)
                                             {
                                                 self.use_alpha = use_alpha;
-                                                *color = c.into();
+                                                *color = Oklcha::from(c).into();
                                             } else {
                                                 ui.style_mut().visuals.selection.stroke =
                                                     egui::Stroke::new(

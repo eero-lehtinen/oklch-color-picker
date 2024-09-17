@@ -2412,8 +2412,8 @@ dependencies = [
  "lexical-parse-float",
  "once_cell",
  "rand",
- "regex",
  "strum",
+ "winnow 0.6.18",
 ]
 
 [[package]]
