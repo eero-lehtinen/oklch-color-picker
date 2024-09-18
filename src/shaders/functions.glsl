@@ -1,4 +1,4 @@
-#version 450
+#version 330
 
 uniform float width;
 in vec2 uv2;
@@ -76,5 +76,5 @@ vec3 screen_space_dither(vec2 frag_coord) {
     return (dither - 0.5) / 255.0;
 }
 
-const vec3 BG = to_srgb(oklab_to_linear_srgb(oklch_to_oklab(vec3(lr_to_l(0.5), 0.0, 0.0))));
+const vec3 BG = vec3(0.35, 0.35, 0.35);
 
