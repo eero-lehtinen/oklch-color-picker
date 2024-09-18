@@ -235,13 +235,14 @@ fn canvas_picker(ui: &mut egui::Ui) -> egui::Frame {
 }
 
 fn canvas_slider(ui: &mut egui::Ui) -> egui::Frame {
+    let h = ui.available_height();
     egui::Frame::canvas(ui.style())
         .inner_margin(3.0)
         .outer_margin(egui::Margin {
             left: 10.,
             right: 14.,
-            bottom: 4.,
-            top: 4.,
+            bottom: h / 8.,
+            top: h / 8.,
         })
         .fill(MID_GRAY.into())
         .stroke(Stroke::new(2.0, MID_GRAY))
@@ -283,29 +284,24 @@ impl eframe::App for App {
         let (previous_fallback_color, is_previous_fallback) =
             gamut_clip_preserve_chroma(Oklcha::from(self.previous_color).into());
 
-        let glow_paint =
-            |ui: &mut egui::Ui, program: ProgramKind, color: Oklrcha, width: f32, extra_w: f32| {
-                let p = Arc::clone(&self.programs[&program]);
-                let mut rect = ui.min_rect();
-                if extra_w > 0. {
-                    rect.max.x += extra_w;
-                } else {
-                    rect.min.x += extra_w;
-                }
-                let cb = egui::PaintCallback {
-                    rect,
-                    callback: Arc::new(egui_glow::CallbackFn::new(move |_info, painter| {
-                        p.lock().unwrap().paint(
-                            painter.gl(),
-                            color,
-                            fallback_color,
-                            previous_fallback_color,
-                            width,
-                        );
-                    })),
-                };
-                ui.painter().add(cb);
+        let glow_paint = |ui: &mut egui::Ui, program: ProgramKind, color: Oklrcha, width: f32| {
+            let p = Arc::clone(&self.programs[&program]);
+            let mut rect = ui.min_rect();
+
+            let cb = egui::PaintCallback {
+                rect,
+                callback: Arc::new(egui_glow::CallbackFn::new(move |_info, painter| {
+                    p.lock().unwrap().paint(
+                        painter.gl(),
+                        color,
+                        fallback_color,
+                        previous_fallback_color,
+                        width,
+                    );
+                })),
             };
+            ui.painter().add(cb);
+        };
 
         let draw_line = |ui: &mut egui::Ui,
                          vertical: bool,
@@ -351,9 +347,9 @@ impl eframe::App for App {
         central_panel.show(ctx, |ui| {
             StripBuilder::new(ui)
                 .size(Size::remainder())
-                .size(Size::exact(10.))
+                .size(Size::relative(0.01))
                 .size(Size::relative(0.20).at_least(120.))
-                .size(Size::exact(10.))
+                .size(Size::relative(0.01))
                 .size(Size::relative(0.18).at_least(120.))
                 .vertical(|mut strip| {
                     strip.strip(|builder| {
@@ -380,7 +376,6 @@ impl eframe::App for App {
                                         ProgramKind::Picker,
                                         self.color,
                                         rect.aspect_ratio(),
-                                        0.,
                                     );
 
                                     let l = self.color.lightness_r;
@@ -412,7 +407,6 @@ impl eframe::App for App {
                                         ProgramKind::Picker2,
                                         self.color,
                                         rect.aspect_ratio(),
-                                        0.,
                                     );
 
                                     let h = self.color.hue / 360.;
@@ -473,7 +467,6 @@ impl eframe::App for App {
                                             ProgramKind::Lightness,
                                             self.color,
                                             rect.aspect_ratio(),
-                                            0.,
                                         );
                                         draw_slider_line(ui, rect, self.color.lightness_r);
                                     });
@@ -516,7 +509,6 @@ impl eframe::App for App {
                                             ProgramKind::Chroma,
                                             self.color,
                                             rect.aspect_ratio(),
-                                            0.,
                                         );
                                         draw_slider_line(ui, rect, self.color.chroma / CHROMA_MAX);
                                     });
@@ -556,7 +548,6 @@ impl eframe::App for App {
                                             ProgramKind::Hue,
                                             self.color,
                                             rect.aspect_ratio(),
-                                            0.,
                                         );
                                         draw_slider_line(ui, rect, self.color.hue / 360.);
                                     });
@@ -598,7 +589,6 @@ impl eframe::App for App {
                                             ProgramKind::Alpha,
                                             self.color,
                                             rect.aspect_ratio(),
-                                            0.,
                                         );
                                         draw_slider_line(ui, rect, self.color.alpha);
                                     });
@@ -682,7 +672,6 @@ impl eframe::App for App {
                                             ProgramKind::Final,
                                             self.color,
                                             rect.aspect_ratio(),
-                                            0.,
                                         );
                                     });
                                     ui.columns(2, |ui| {
@@ -741,13 +730,14 @@ impl eframe::App for App {
 
                                         ui.add_space(1.);
 
-                                        // ui.style_mut().spacing.button_padding = egui::vec2(16.0, 16.0);
+                                        ui.style_mut().spacing.button_padding =
+                                            egui::vec2(16.0, 8.0);
                                         ui.horizontal_centered(|ui| {
                                             let button =
                                                 egui::Button::new(RichText::new("DONE").size(26.0))
                                                     .min_size(Vec2::new(
                                                         ui.available_size().x,
-                                                        ui.available_size().y,
+                                                        ui.available_size().y * 0.8,
                                                     ))
                                                     .stroke(egui::Stroke::new(
                                                         1.0,
