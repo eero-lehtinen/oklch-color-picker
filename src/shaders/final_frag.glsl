@@ -1,15 +1,8 @@
-out vec4 FragColor;
-in vec2 uv;
-
 uniform vec4 prev_color;
 uniform vec4 color;
 
 void main() {
-	float size = 0.1;
-	vec2 pos = floor((uv2 + 0.05) / size);
-	float mask = mod(pos.x + mod(pos.y, 2.), 2.);
-
-	vec3 cb = vec3(mix(BG, vec3(0.68), mask));
+	vec3 cb = checkerboard(0.1, 0.1);
 
 	vec4 color = uv.x < 0.5 ? prev_color : color;
 
@@ -17,8 +10,5 @@ void main() {
 
 	color.rgb += screen_space_dither(gl_FragCoord.xy);
 
-
-	color.rg = gl_FragCoord.xy;
-
-    FragColor = color;
+    FragColor = rounded(color, 2.5, uv2, size);
 }

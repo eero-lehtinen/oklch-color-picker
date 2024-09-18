@@ -1,9 +1,5 @@
-out vec4 FragColor;
-in vec2 uv;
-
 uniform float hue;
 uniform float lightness;
-
 
 void main() {
 	float chroma = uv.x * 0.33;
@@ -16,5 +12,5 @@ void main() {
 
 	color += screen_space_dither(gl_FragCoord.xy);
 
-    FragColor = vec4(color, 1.);
+    FragColor = rounded(vec4(color, 1.), 1.5, uv2, size);
 }

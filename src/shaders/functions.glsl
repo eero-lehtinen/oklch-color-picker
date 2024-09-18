@@ -1,9 +1,14 @@
 #version 330
 
-uniform float width;
+out vec4 FragColor;
+
+uniform vec2 size;
+in vec2 uv;
 in vec2 uv2;
 
+
 const float PI = 3.14159265358979323846;
+const vec3 BG = vec3(0.4662, 0.4662, 0.4662);
 
 float to_srgb(float v) {
 	if (v <= 0.0) {
@@ -76,5 +81,24 @@ vec3 screen_space_dither(vec2 frag_coord) {
     return (dither - 0.5) / 255.0;
 }
 
-const vec3 BG = vec3(0.4662, 0.4662, 0.4662);
+vec3 checkerboard(float checker_size, float soften) {
+	vec2 uv = uv / checker_size;
+	uv.x *= size.x / size.y;
+
+	vec2 a = abs(fract((2. * uv - soften) / 2.) - 0.5);
+	vec2 b = abs(fract((2. * uv + soften) / 2.) - 0.5);
+	vec2 mask = (a - b) / soften;
+
+	return vec3(mix(BG, vec3(0.62), 0.5 - 0.5 * mask.x*mask.y));
+}
+
+
+vec4 rounded(vec4 color, float border_radius, vec2 uv, vec2 size) {
+	border_radius *= 2.;
+	vec2 dist_edge = min(uv, size - uv);
+	float dist_corner = length(max(border_radius - dist_edge, 0.));
+	float f = smoothstep(border_radius - 0.5, border_radius, dist_corner);
+	return mix(color, vec4(BG, 1.), f);
+}
+
 

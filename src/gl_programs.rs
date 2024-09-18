@@ -1,5 +1,6 @@
 use bevy_color::{ColorToComponents, LinearRgba, Srgba};
 use eframe::glow::{self, HasContext};
+use egui::Vec2;
 use strum::EnumIter;
 
 use crate::gamut::{lr_to_l, Oklrcha};
@@ -119,14 +120,15 @@ impl GlowProgram {
         color: Oklrcha,
         fallback_color: LinearRgba,
         previous_fallback_color: LinearRgba,
-        width: f32,
+        size: Vec2,
     ) {
         unsafe {
+            let uni_loc = |name: &str| gl.get_uniform_location(self.program, name);
             let set_uni_f32 = |name: &str, value: f32| {
-                gl.uniform_1_f32(gl.get_uniform_location(self.program, name).as_ref(), value);
+                gl.uniform_1_f32(uni_loc(name).as_ref(), value);
             };
             gl.use_program(Some(self.program));
-            set_uni_f32("width", width);
+            gl.uniform_2_f32(uni_loc("size").as_ref(), size.x, size.y);
             match self.kind {
                 ProgramKind::Picker => {
                     set_uni_f32("hue", color.hue);
@@ -143,17 +145,17 @@ impl GlowProgram {
                 }
                 ProgramKind::Alpha => {
                     gl.uniform_3_f32_slice(
-                        gl.get_uniform_location(self.program, "color").as_ref(),
+                        uni_loc("color").as_ref(),
                         &Srgba::from(fallback_color).to_f32_array_no_alpha()[..],
                     );
                 }
                 ProgramKind::Final => {
                     gl.uniform_4_f32_slice(
-                        gl.get_uniform_location(self.program, "prev_color").as_ref(),
+                        uni_loc("prev_color").as_ref(),
                         &Srgba::from(previous_fallback_color).to_f32_array()[..],
                     );
                     gl.uniform_4_f32_slice(
-                        gl.get_uniform_location(self.program, "color").as_ref(),
+                        uni_loc("color").as_ref(),
                         &Srgba::from(fallback_color).to_f32_array()[..],
                     );
                 }

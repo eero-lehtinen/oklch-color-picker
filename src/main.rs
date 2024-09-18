@@ -222,7 +222,7 @@ const MID_GRAY: egui::Rgba =
 
 fn canvas_picker(ui: &mut egui::Ui) -> egui::Frame {
     egui::Frame::canvas(ui.style())
-        .inner_margin(6.0)
+        .inner_margin(10.0)
         .outer_margin(egui::Margin {
             bottom: 6.,
             left: 3.,
@@ -231,13 +231,13 @@ fn canvas_picker(ui: &mut egui::Ui) -> egui::Frame {
         })
         .fill(MID_GRAY.into())
         .stroke(Stroke::new(2.0, MID_GRAY))
-        .rounding(6.)
+        .rounding(10.)
 }
 
 fn canvas_slider(ui: &mut egui::Ui) -> egui::Frame {
     let h = ui.available_height();
     egui::Frame::canvas(ui.style())
-        .inner_margin(3.0)
+        .inner_margin(4.0)
         .outer_margin(egui::Margin {
             left: 10.,
             right: 14.,
@@ -246,21 +246,21 @@ fn canvas_slider(ui: &mut egui::Ui) -> egui::Frame {
         })
         .fill(MID_GRAY.into())
         .stroke(Stroke::new(2.0, MID_GRAY))
-        .rounding(3.)
+        .rounding(6.)
 }
 
 fn canvas_final(ui: &mut egui::Ui) -> egui::Frame {
     egui::Frame::canvas(ui.style())
         .inner_margin(6.0)
         .outer_margin(egui::Margin {
-            left: 0.,
-            right: 0.,
+            left: 3.,
+            right: 3.,
             bottom: 12.,
             top: 4.,
         })
         .fill(MID_GRAY.into())
         .stroke(Stroke::new(2.0, MID_GRAY))
-        .rounding(6.)
+        .rounding(10.)
 }
 
 impl eframe::App for App {
@@ -284,7 +284,7 @@ impl eframe::App for App {
         let (previous_fallback_color, is_previous_fallback) =
             gamut_clip_preserve_chroma(Oklcha::from(self.previous_color).into());
 
-        let glow_paint = |ui: &mut egui::Ui, program: ProgramKind, color: Oklrcha, width: f32| {
+        let glow_paint = |ui: &mut egui::Ui, program: ProgramKind, color: Oklrcha, size: Vec2| {
             let p = Arc::clone(&self.programs[&program]);
             let rect = ui.min_rect();
 
@@ -296,7 +296,7 @@ impl eframe::App for App {
                         color,
                         fallback_color,
                         previous_fallback_color,
-                        width,
+                        size,
                     );
                 })),
             };
@@ -312,29 +312,35 @@ impl eframe::App for App {
                          labels: &mut Vec<(egui::Rect, String)>| {
             let width = if wide { 2. } else { 1. };
             let color = LINE_COLOR;
+            let border = 10.;
             if vertical {
-                let painter = ui.painter_at(rect);
                 let pos = lerp(rect.left(), rect.right(), pos);
+                let rect = rect.expand(border);
+                let painter = ui.painter_at(rect);
                 painter.add(egui::Shape::line_segment(
-                    [Pos2::new(pos, rect.top()), Pos2::new(pos, rect.bottom())],
+                    [
+                        Pos2::new(pos, rect.top() - border),
+                        Pos2::new(pos, rect.bottom() + border),
+                    ],
                     Stroke::new(width, color),
                 ));
                 if !name.is_empty() {
-                    let label_center = Pos2::new(pos, rect.bottom() + 12.);
+                    let label_center = Pos2::new(pos, rect.bottom() + 5.);
                     let label_rect =
                         egui::Rect::from_center_size(label_center, egui::vec2(16.0, 10.0));
                     labels.push((label_rect, name.to_owned()));
                 }
             } else {
-                let painter = ui.painter_at(rect);
                 let pos = lerp(rect.bottom(), rect.top(), pos);
+                let rect = rect.expand(border);
+                let painter = ui.painter_at(rect);
                 painter.add(egui::Shape::line_segment(
                     [Pos2::new(rect.left(), pos), Pos2::new(rect.right(), pos)],
                     Stroke::new(width, color),
                 ));
 
                 if !name.is_empty() {
-                    let label_center = Pos2::new(rect.left() - 17., pos - 4.);
+                    let label_center = Pos2::new(rect.left() - 10., pos - 4.);
                     let label_rect =
                         egui::Rect::from_center_size(label_center, egui::vec2(10.0, 10.0));
                     labels.push((label_rect, name.to_owned()));
@@ -371,12 +377,7 @@ impl eframe::App for App {
                                         );
                                     }
 
-                                    glow_paint(
-                                        ui,
-                                        ProgramKind::Picker,
-                                        self.color,
-                                        rect.aspect_ratio(),
-                                    );
+                                    glow_paint(ui, ProgramKind::Picker, self.color, rect.size());
 
                                     let l = self.color.lightness_r;
                                     draw_line(ui, true, false, rect, l, "Lr", &mut labels);
@@ -402,12 +403,7 @@ impl eframe::App for App {
                                         );
                                     }
 
-                                    glow_paint(
-                                        ui,
-                                        ProgramKind::Picker2,
-                                        self.color,
-                                        rect.aspect_ratio(),
-                                    );
+                                    glow_paint(ui, ProgramKind::Picker2, self.color, rect.size());
 
                                     let h = self.color.hue / 360.;
                                     draw_line(ui, true, false, rect, h, "H", &mut labels);
@@ -437,7 +433,7 @@ impl eframe::App for App {
                                         rect.height() + 10.,
                                     ),
                                 ),
-                                3.,
+                                4.,
                                 fallback_egui_color,
                                 Stroke::new(3.0, LINE_COLOR2),
                             );
@@ -466,7 +462,7 @@ impl eframe::App for App {
                                             ui,
                                             ProgramKind::Lightness,
                                             self.color,
-                                            rect.aspect_ratio(),
+                                            rect.size(),
                                         );
                                         draw_slider_line(ui, rect, self.color.lightness_r);
                                     });
@@ -508,7 +504,7 @@ impl eframe::App for App {
                                             ui,
                                             ProgramKind::Chroma,
                                             self.color,
-                                            rect.aspect_ratio(),
+                                            rect.size(),
                                         );
                                         draw_slider_line(ui, rect, self.color.chroma / CHROMA_MAX);
                                     });
@@ -543,12 +539,7 @@ impl eframe::App for App {
                                                 map(pos.x, (rect.left(), rect.right()), (0., 360.));
                                         }
 
-                                        glow_paint(
-                                            ui,
-                                            ProgramKind::Hue,
-                                            self.color,
-                                            rect.aspect_ratio(),
-                                        );
+                                        glow_paint(ui, ProgramKind::Hue, self.color, rect.size());
                                         draw_slider_line(ui, rect, self.color.hue / 360.);
                                     });
 
@@ -584,12 +575,7 @@ impl eframe::App for App {
                                             self.use_alpha = true;
                                         }
 
-                                        glow_paint(
-                                            ui,
-                                            ProgramKind::Alpha,
-                                            self.color,
-                                            rect.aspect_ratio(),
-                                        );
+                                        glow_paint(ui, ProgramKind::Alpha, self.color, rect.size());
                                         draw_slider_line(ui, rect, self.color.alpha);
                                     });
                                     let get_set = |v: Option<f64>| match v {
@@ -667,13 +653,9 @@ impl eframe::App for App {
                                             ),
                                             egui::Sense::drag(),
                                         );
-                                        glow_paint(
-                                            ui,
-                                            ProgramKind::Final,
-                                            self.color,
-                                            rect.aspect_ratio(),
-                                        );
+                                        glow_paint(ui, ProgramKind::Final, self.color, rect.size());
                                     });
+                                    ui.add_space(2.);
                                     ui.columns(2, |ui| {
                                         show_color_edit(
                                             &mut ui[0],
@@ -741,12 +723,13 @@ impl eframe::App for App {
                                                 egui::Button::new(RichText::new("DONE").size(26.0))
                                                     .min_size(Vec2::new(
                                                         ui.available_size().x,
-                                                        ui.available_size().y * 0.8,
+                                                        ui.available_size().y * 0.9,
                                                     ))
                                                     .stroke(egui::Stroke::new(
                                                         1.0,
                                                         fallback_egui_color,
-                                                    ));
+                                                    ))
+                                                    .rounding(10.);
                                             if ui.add(button).clicked() {
                                                 println!(
                                                     "{}",

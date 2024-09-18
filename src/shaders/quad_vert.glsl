@@ -1,6 +1,6 @@
 #version 450
 
-uniform float width;
+uniform vec2 size;
 
 out vec2 uv;
 out vec2 uv2;
@@ -16,5 +16,5 @@ const vec2 verts[4] = vec2[4](
 void main() {
 	gl_Position = vec4(verts[gl_VertexID], 0., 1.);
 	uv = verts[gl_VertexID] * 0.5 + 0.5;
-	uv2 = uv * vec2(width, 1.);
+	uv2 = uv * size;
 }

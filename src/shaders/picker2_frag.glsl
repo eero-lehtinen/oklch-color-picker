@@ -1,6 +1,3 @@
-out vec4 FragColor;
-in vec2 uv;
-
 uniform float lightness;
 
 void main() {
