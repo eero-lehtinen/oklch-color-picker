@@ -16,6 +16,7 @@ use eframe::{
     egui_glow,
     glow::{self},
 };
+use egui::ViewportBuilder;
 use egui_extras::{Size, StripBuilder};
 use formats::{
     format_color, parse_color, parse_color_unknown_format, ColorFormat, CssColorFormat,
@@ -65,6 +66,7 @@ fn main() -> ExitCode {
     let native_options = eframe::NativeOptions {
         multisampling: 4,
         renderer: eframe::Renderer::Glow,
+        viewport: ViewportBuilder::default().with_min_inner_size(Vec2::new(500., 400.)),
         ..Default::default()
     };
 
