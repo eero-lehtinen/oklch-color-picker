@@ -5,6 +5,7 @@
 ## Features
 - Takes an input color from stdin and ouputs the edited color to stdout
 - Uses a perceptual colorspace (Oklch) to allow intuitive editing
+  - Consists of lightness, chroma and hue
   - Motivation: [An article by the Oklab creator](https://bottosson.github.io/posts/oklab/)
   - Oklch uses the same theory as Oklab, but uses parameters that are easier to understand
   - L<sub>r</sub> estimate is used instead of L as specified in [another article by the same guy](https://bottosson.github.io/posts/colorpicker/#intermission---a-new-lightness-estimate-for-oklab)
