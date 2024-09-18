@@ -76,5 +76,5 @@ vec3 screen_space_dither(vec2 frag_coord) {
     return (dither - 0.5) / 255.0;
 }
 
-const vec3 BG = vec3(0.35, 0.35, 0.35);
+const vec3 BG = vec3(0.4662, 0.4662, 0.4662);
 

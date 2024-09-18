@@ -220,41 +220,44 @@ const MID_GRAY: egui::Rgba =
 
 fn canvas_picker(ui: &mut egui::Ui) -> egui::Frame {
     egui::Frame::canvas(ui.style())
-        .inner_margin(0.0)
+        .inner_margin(6.0)
         .outer_margin(egui::Margin {
-            bottom: 9.,
-            left: 9.,
-            right: 9.,
+            bottom: 6.,
+            left: 3.,
+            right: 3.,
             top: 0.,
         })
-        .rounding(0.)
-        .stroke(Stroke::new(14.0, MID_GRAY))
+        .fill(MID_GRAY.into())
+        .stroke(Stroke::new(2.0, MID_GRAY))
+        .rounding(6.)
 }
 
 fn canvas_slider(ui: &mut egui::Ui) -> egui::Frame {
     egui::Frame::canvas(ui.style())
-        .inner_margin(0.0)
+        .inner_margin(3.0)
         .outer_margin(egui::Margin {
             left: 10.,
             right: 14.,
-            bottom: 6.,
-            top: 6.,
+            bottom: 4.,
+            top: 4.,
         })
-        .rounding(0.)
-        .stroke(Stroke::new(7.0, MID_GRAY))
+        .fill(MID_GRAY.into())
+        .stroke(Stroke::new(2.0, MID_GRAY))
+        .rounding(3.)
 }
 
 fn canvas_final(ui: &mut egui::Ui) -> egui::Frame {
     egui::Frame::canvas(ui.style())
-        .inner_margin(0.0)
+        .inner_margin(6.0)
         .outer_margin(egui::Margin {
             left: 0.,
             right: 0.,
             bottom: 12.,
             top: 4.,
         })
-        .rounding(0.0)
-        .stroke(Stroke::new(10.0, MID_GRAY))
+        .fill(MID_GRAY.into())
+        .stroke(Stroke::new(2.0, MID_GRAY))
+        .rounding(6.)
 }
 
 impl eframe::App for App {
@@ -264,9 +267,7 @@ impl eframe::App for App {
             self.first_frame = false;
         }
 
-        let frame = egui::Frame::central_panel(&ctx.style())
-            .inner_margin(20.0)
-            .stroke(Stroke::NONE);
+        let frame = egui::Frame::central_panel(&ctx.style()).inner_margin(20.0);
 
         let central_panel = egui::CentralPanel::default().frame(frame);
 
@@ -436,8 +437,8 @@ impl eframe::App for App {
                                 egui::Rect::from_center_size(
                                     center,
                                     egui::vec2(
-                                        (rect.width() / 90.).clamp(9., 22.),
-                                        rect.height() + 6.,
+                                        (rect.width() / 85.).clamp(9., 22.),
+                                        rect.height() + 10.,
                                     ),
                                 ),
                                 3.,
