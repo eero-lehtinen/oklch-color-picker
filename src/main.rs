@@ -312,7 +312,7 @@ impl eframe::App for App {
                          labels: &mut Vec<(egui::Rect, String)>| {
             let width = if wide { 2. } else { 1. };
             let color = LINE_COLOR;
-            let border = 10.;
+            let border = 5.5;
             if vertical {
                 let pos = lerp(rect.left(), rect.right(), pos);
                 let rect = rect.expand(border);
