@@ -1,6 +1,7 @@
 out vec4 FragColor;
 in vec2 uv;
 
+uniform vec4 prev_color;
 uniform vec4 color;
 
 void main() {
@@ -10,9 +11,14 @@ void main() {
 
 	vec3 cb = vec3(mix(BG, vec3(0.68), mask));
 
-	vec4 color = blend(cb, color);
+	vec4 color = uv.x < 0.5 ? prev_color : color;
+
+	color = blend(cb, color);
 
 	color.rgb += screen_space_dither(gl_FragCoord.xy);
+
+
+	color.rg = gl_FragCoord.xy;
 
     FragColor = color;
 }

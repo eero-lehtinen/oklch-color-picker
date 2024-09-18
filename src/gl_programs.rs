@@ -13,7 +13,6 @@ pub enum ProgramKind {
     Lightness,
     Chroma,
     Alpha,
-    FinalPrevious,
     Final,
 }
 
@@ -54,7 +53,7 @@ impl GlowProgram {
                     include_str!("shaders/functions.glsl"),
                     include_str!("shaders/alpha_frag.glsl")
                 ),
-                ProgramKind::Final | ProgramKind::FinalPrevious => concat!(
+                ProgramKind::Final => concat!(
                     include_str!("shaders/functions.glsl"),
                     include_str!("shaders/final_frag.glsl")
                 ),
@@ -150,14 +149,12 @@ impl GlowProgram {
                 }
                 ProgramKind::Final => {
                     gl.uniform_4_f32_slice(
-                        gl.get_uniform_location(self.program, "color").as_ref(),
-                        &Srgba::from(fallback_color).to_f32_array()[..],
+                        gl.get_uniform_location(self.program, "prev_color").as_ref(),
+                        &Srgba::from(previous_fallback_color).to_f32_array()[..],
                     );
-                }
-                ProgramKind::FinalPrevious => {
                     gl.uniform_4_f32_slice(
                         gl.get_uniform_location(self.program, "color").as_ref(),
-                        &Srgba::from(previous_fallback_color).to_f32_array()[..],
+                        &Srgba::from(fallback_color).to_f32_array()[..],
                     );
                 }
             }

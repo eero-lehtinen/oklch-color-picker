@@ -624,22 +624,10 @@ impl eframe::App for App {
 
                     strip.strip(|builder| {
                         builder
-                            .size(Size::remainder())
-                            .size(Size::remainder())
+                            .size(Size::relative(2. / 3.))
                             .size(Size::exact(10.))
                             .size(Size::remainder())
                             .horizontal(|mut strip| {
-                                let rect_allocate = |ui: &mut egui::Ui| {
-                                    let (rect, _) = ui.allocate_exact_size(
-                                        Vec2::new(
-                                            ui.available_width(),
-                                            ui.available_height() / 1.8,
-                                        ),
-                                        egui::Sense::drag(),
-                                    );
-                                    rect
-                                };
-
                                 let mut show_color_edit =
                                     |ui: &mut egui::Ui,
                                      color: &mut Oklrcha,
@@ -678,25 +666,30 @@ impl eframe::App for App {
                                     };
 
                                 strip.cell(|ui| {
-                                    ui.vertical(|ui| {
-                                        canvas_final(ui).show(ui, |ui| {
-                                            let rect = rect_allocate(ui);
-                                            glow_paint(
-                                                ui,
-                                                ProgramKind::FinalPrevious,
-                                                self.color,
-                                                rect.aspect_ratio(),
-                                                4.,
-                                            );
-                                        });
-
-                                        show_color_edit(
+                                    canvas_final(ui).show(ui, |ui| {
+                                        let (rect, _) = ui.allocate_exact_size(
+                                            Vec2::new(
+                                                ui.available_width(),
+                                                ui.available_height() / 1.8,
+                                            ),
+                                            egui::Sense::drag(),
+                                        );
+                                        glow_paint(
                                             ui,
+                                            ProgramKind::Final,
+                                            self.color,
+                                            rect.aspect_ratio(),
+                                            0.,
+                                        );
+                                    });
+                                    ui.columns(2, |ui| {
+                                        show_color_edit(
+                                            &mut ui[0],
                                             &mut self.previous_color,
                                             previous_fallback_color,
                                             0,
                                         );
-                                        ui.label(format!(
+                                        ui[0].label(format!(
                                             "Previous Color{}",
                                             if is_previous_fallback {
                                                 " (fallback)"
@@ -704,24 +697,13 @@ impl eframe::App for App {
                                                 ""
                                             }
                                         ));
-                                    });
-                                });
-
-                                strip.cell(|ui| {
-                                    ui.vertical(|ui| {
-                                        canvas_final(ui).show(ui, |ui| {
-                                            let rect = rect_allocate(ui);
-                                            glow_paint(
-                                                ui,
-                                                ProgramKind::Final,
-                                                self.color,
-                                                rect.aspect_ratio(),
-                                                -5.,
-                                            );
-                                        });
-
-                                        show_color_edit(ui, &mut self.color, fallback_color, 1);
-                                        ui.label(format!(
+                                        show_color_edit(
+                                            &mut ui[1],
+                                            &mut self.color,
+                                            fallback_color,
+                                            1,
+                                        );
+                                        ui[1].label(format!(
                                             "New Color{}",
                                             if is_fallback { " (fallback)" } else { "" }
                                         ));
