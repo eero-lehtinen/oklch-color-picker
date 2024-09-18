@@ -1,4 +1,4 @@
-#version 450
+#version 330
 
 uniform vec2 size;
 
