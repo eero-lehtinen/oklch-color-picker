@@ -9,5 +9,5 @@ void main() {
 
 	color.rgb += screen_space_dither(gl_FragCoord.xy);
 
-    FragColor = rounded(color, 1.5, uv2, size);
+    FragColor = color;
 }

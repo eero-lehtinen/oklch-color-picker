@@ -13,5 +13,5 @@ void main() {
 
 	rgb += screen_space_dither(gl_FragCoord.xy);
 
-    FragColor = rounded(vec4(rgb, 1.), 1.5, uv2, size);
+    FragColor = vec4(rgb, 1.);
 }

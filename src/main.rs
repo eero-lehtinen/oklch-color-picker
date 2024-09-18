@@ -222,22 +222,22 @@ const MID_GRAY: egui::Rgba =
 
 fn canvas_picker(ui: &mut egui::Ui) -> egui::Frame {
     egui::Frame::canvas(ui.style())
-        .inner_margin(10.0)
+        .inner_margin(0.0)
         .outer_margin(egui::Margin {
-            bottom: 6.,
-            left: 3.,
-            right: 3.,
+            bottom: 9.,
+            left: 9.,
+            right: 9.,
             top: 0.,
         })
         .fill(MID_GRAY.into())
-        .stroke(Stroke::new(2.0, MID_GRAY))
-        .rounding(10.)
+        .stroke(Stroke::new(14.0, MID_GRAY))
+        .rounding(0.)
 }
 
 fn canvas_slider(ui: &mut egui::Ui) -> egui::Frame {
     let h = ui.available_height();
     egui::Frame::canvas(ui.style())
-        .inner_margin(4.0)
+        .inner_margin(2.0)
         .outer_margin(egui::Margin {
             left: 10.,
             right: 14.,
@@ -245,13 +245,13 @@ fn canvas_slider(ui: &mut egui::Ui) -> egui::Frame {
             top: h / 8.,
         })
         .fill(MID_GRAY.into())
-        .stroke(Stroke::new(2.0, MID_GRAY))
-        .rounding(6.)
+        .stroke(Stroke::new(4.0, MID_GRAY))
+        .rounding(0.)
 }
 
 fn canvas_final(ui: &mut egui::Ui) -> egui::Frame {
     egui::Frame::canvas(ui.style())
-        .inner_margin(6.0)
+        .inner_margin(4.0)
         .outer_margin(egui::Margin {
             left: 3.,
             right: 3.,
@@ -260,7 +260,7 @@ fn canvas_final(ui: &mut egui::Ui) -> egui::Frame {
         })
         .fill(MID_GRAY.into())
         .stroke(Stroke::new(2.0, MID_GRAY))
-        .rounding(10.)
+        .rounding(0.)
 }
 
 impl eframe::App for App {
@@ -728,8 +728,7 @@ impl eframe::App for App {
                                                     .stroke(egui::Stroke::new(
                                                         1.0,
                                                         fallback_egui_color,
-                                                    ))
-                                                    .rounding(10.);
+                                                    ));
                                             if ui.add(button).clicked() {
                                                 println!(
                                                     "{}",
