@@ -16,7 +16,7 @@ use eframe::{
     egui_glow,
     glow::{self},
 };
-use egui::ViewportBuilder;
+use egui::{ViewportBuilder, Widget};
 use egui_extras::{Size, StripBuilder};
 use formats::{
     format_color, parse_color, parse_color_unknown_format, ColorFormat, CssColorFormat,
@@ -286,7 +286,7 @@ impl eframe::App for App {
 
         let glow_paint = |ui: &mut egui::Ui, program: ProgramKind, color: Oklrcha, width: f32| {
             let p = Arc::clone(&self.programs[&program]);
-            let mut rect = ui.min_rect();
+            let rect = ui.min_rect();
 
             let cb = egui::PaintCallback {
                 rect,
@@ -681,24 +681,28 @@ impl eframe::App for App {
                                             previous_fallback_color,
                                             0,
                                         );
-                                        ui[0].label(format!(
-                                            "Previous Color{}",
-                                            if is_previous_fallback {
-                                                " (fallback)"
-                                            } else {
-                                                ""
-                                            }
-                                        ));
+                                        let color_label = |text: &str, fallback: bool| {
+                                            egui::Label::new(format!(
+                                                "{text}{}",
+                                                if fallback { " (fallback)" } else { "" }
+                                            ))
+                                            .wrap_mode(egui::TextWrapMode::Truncate)
+                                        };
+
+                                        ui[0].horizontal(|ui| {
+                                            color_label("Previous Color", is_previous_fallback)
+                                                .ui(ui);
+                                        });
+
                                         show_color_edit(
                                             &mut ui[1],
                                             &mut self.color,
                                             fallback_color,
                                             1,
                                         );
-                                        ui[1].label(format!(
-                                            "New Color{}",
-                                            if is_fallback { " (fallback)" } else { "" }
-                                        ));
+                                        ui[1].horizontal(|ui| {
+                                            color_label("New Color", is_fallback).ui(ui);
+                                        });
                                     });
                                 });
 
