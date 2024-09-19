@@ -2,6 +2,12 @@
 name = "oklch-color-picker"
 version = "1.4.1"
 edition = "2021"
+license = "MIT"
+description = "A standalone graphical color picker using the Oklch color space. Allows output to hex, rgb, hsl and many other formats."
+repository = "https://github.com/eero-lehtinen/oklch-color-picker"
+readme = "readme.md"
+keywords = ["color", "oklch", "oklab", "utility", "color-picker"]
+categories = ["visualization"]
 
 [dependencies]
 bevy_color = { version = "0.14.2", default-features = false }
