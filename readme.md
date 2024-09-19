@@ -3,6 +3,7 @@
 ![picker](https://github.com/user-attachments/assets/e75bd890-2833-4c40-ab80-fee55ef21db3)
 
 ## Features
+
 - Takes an input color as a cli argument and ouputs the edited color to stdout
 - Uses a perceptual colorspace (Oklch) to allow intuitive editing
   - Consists of lightness, chroma and hue
@@ -19,10 +20,14 @@
 
 Download from [Releases](https://github.com/eero-lehtinen/oklch-color-picker/releases).
 
-You can also clone the repo, run `cargo build -r` and copy the binary from `target/release/oklch-color-picker` to your PATH.
+If you have **cargo**, you can also install with:
 
-___
- 
+```sh
+cargo install oklch-color-picker --locked
+```
+
+---
+
 Check out the neovim plugin that this picker was made for [eero-lehtinen/oklch-color-picker.nvim](https://github.com/eero-lehtinen/oklch-color-picker.nvim).
 
 Inspired by https://oklch.com/.
