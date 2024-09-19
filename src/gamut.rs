@@ -179,7 +179,7 @@ fn find_gamut_intersection(a: f32, b: f32, ll1: f32, cc1: f32, ll0: f32) -> f32 
     t
 }
 
-pub fn gamut_clip_preserve_chroma(rgba: LinearRgba) -> (LinearRgba, bool) {
+pub fn gamut_clip_preserve_chroma(rgba: LinearRgba) -> LinearRgba {
     if rgba.red <= 1.
         && rgba.green <= 1.
         && rgba.blue <= 1.
@@ -187,7 +187,7 @@ pub fn gamut_clip_preserve_chroma(rgba: LinearRgba) -> (LinearRgba, bool) {
         && rgba.green >= 0.
         && rgba.blue >= 0.
     {
-        return (rgba, false);
+        return rgba;
     }
 
     let laba = Oklaba::from(rgba);
@@ -220,10 +220,10 @@ pub fn gamut_clip_preserve_chroma(rgba: LinearRgba) -> (LinearRgba, bool) {
         && (rgba.green - result.green).abs() < 0.003
         && (rgba.blue - result.blue).abs() < 0.003
     {
-        return (rgba, false);
+        return rgba;
     }
 
-    (result, true)
+    result
 }
 
 pub fn lr_to_l(lr: f32) -> f32 {
