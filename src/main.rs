@@ -53,7 +53,6 @@ fn main() -> ExitCode {
     log_startup_time("Color parse");
 
     let native_options = eframe::NativeOptions {
-        multisampling: 4,
         renderer: eframe::Renderer::Glow,
         viewport: ViewportBuilder::default().with_min_inner_size(Vec2::new(500., 400.)),
         ..Default::default()
