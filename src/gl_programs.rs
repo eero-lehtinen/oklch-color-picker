@@ -5,7 +5,7 @@ use strum::EnumIter;
 
 use crate::gamut::{lr_to_l, Oklrcha};
 
-#[derive(Default, Clone, Copy, EnumIter, Hash, PartialEq, Eq)]
+#[derive(Default, Clone, Copy, EnumIter, Hash, PartialEq, Eq, Debug)]
 pub enum ProgramKind {
     #[default]
     Picker,
@@ -74,7 +74,7 @@ impl GlowProgram {
                     gl.compile_shader(shader);
                     assert!(
                         gl.get_shader_compile_status(shader),
-                        "Failed to compile {shader_type}: {}",
+                        "Failed to compile '{kind:?}' {shader_type}: {}",
                         gl.get_shader_info_log(shader)
                     );
                     gl.attach_shader(program, shader);
@@ -118,6 +118,7 @@ impl GlowProgram {
                 gl.uniform_1_f32(uni_loc(name).as_ref(), value);
             };
             gl.use_program(Some(self.program));
+            gl.uniform_1_u32(uni_loc("supersample").as_ref(), 1);
             gl.uniform_2_f32(uni_loc("size").as_ref(), size.x, size.y);
             match self.kind {
                 ProgramKind::Picker => {

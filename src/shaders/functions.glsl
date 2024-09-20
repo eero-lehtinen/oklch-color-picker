@@ -3,12 +3,27 @@
 out vec4 FragColor;
 
 uniform vec2 size;
+uniform uint supersample;
+
 in vec2 uv;
 in vec2 uv2;
 
-
 const float PI = 3.14159265358979323846;
-const vec3 BG = vec3(0.4662, 0.4662, 0.4662);
+const float CHROMA_MAX = 0.33;
+
+// const vec2 sample_positions[4] = vec2[4](
+// 	vec2(-0.219, -0.672),
+// 	vec2(-0.672, 0.219),
+// 	vec2(0.672, -0.219),
+// 	vec2(0.219, 0.672)
+// );
+
+const vec2 sample_positions[4] = vec2[4](
+	vec2(0.5, 0.),
+	vec2(0., 0.5),
+	vec2(-0.5, 0.),
+	vec2(0., -0.5)
+);
 
 float to_srgb(float v) {
 	if (v <= 0.0) {
@@ -49,12 +64,20 @@ vec3 oklab_to_linear_srgb(vec3 c) {
 	);
 }
 
-vec3 oklch_to_srgb(vec3 lch, out bool valid) {
+vec4 oklch_to_srgb(vec3 lch) {
 	vec3 rgb = oklab_to_linear_srgb(oklch_to_oklab(lch));
 
-	valid = !(any(lessThan(rgb, vec3(0.0))) || any(greaterThan(rgb, vec3(1.0))));
+	float a = any(lessThan(rgb, vec3(0.0))) || any(greaterThan(rgb, vec3(1.0))) ? 0.0 : 1.0;
 
-	return to_srgb(rgb);
+	return vec4(to_srgb(rgb), a);
+}
+
+vec4 premultiply(vec4 color) {
+	return vec4(color.rgb * color.a, color.a);
+}
+
+vec4 blend_premultiplied(vec4 below, vec4 above) {
+	return above + below * (1. - above.a);
 }
 
 vec4 blend(vec3 below, vec4 above) {
@@ -81,7 +104,7 @@ vec3 screen_space_dither(vec2 frag_coord) {
     return (dither - 0.5) / 255.0;
 }
 
-vec3 checkerboard(float checker_size, float soften) {
+vec4 checkerboard(float checker_size, float soften) {
 	vec2 uv = uv / checker_size;
 	uv.x *= size.x / size.y;
 
@@ -89,16 +112,15 @@ vec3 checkerboard(float checker_size, float soften) {
 	vec2 b = abs(fract((2. * uv + soften) / 2.) - 0.5);
 	vec2 mask = (a - b) / soften;
 
-	return vec3(mix(BG, vec3(0.62), 0.5 - 0.5 * mask.x*mask.y));
+	return vec4(vec3(0.62), 0.5 - 0.5 * mask.x*mask.y);
 }
 
-
-vec4 rounded(vec4 color, float border_radius, vec2 uv, vec2 size) {
-	border_radius *= 2.;
-	vec2 dist_edge = min(uv, size - uv);
-	float dist_corner = length(max(border_radius - dist_edge, 0.));
-	float f = smoothstep(border_radius - 0.5, border_radius, dist_corner);
-	return mix(color, vec4(BG, 1.), f);
-}
+// vec4 rounded(vec4 color, float border_radius, vec2 uv, vec2 size) {
+// 	border_radius *= 2.;
+// 	vec2 dist_edge = min(uv, size - uv);
+// 	float dist_corner = length(max(border_radius - dist_edge, 0.));
+// 	float f = smoothstep(border_radius - 0.5, border_radius, dist_corner);
+// 	return mix(color, vec4(BG, 1.), f);
+// }
 
 
