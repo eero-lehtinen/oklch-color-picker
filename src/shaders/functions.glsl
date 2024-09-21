@@ -25,20 +25,9 @@ const vec2 sample_positions[4] = vec2[4](
 	vec2(0., -0.5)
 );
 
-float to_srgb(float v) {
-	if (v <= 0.0) {
-		return v;
-	}
-	if (v <= 0.0031308) {
-		return 12.92 * v;
-	}
-	return 1.055 * pow(v, 1.0 / 2.4) - 0.055;
-}
-
 vec3 to_srgb(vec3 c) {
-	return vec3(to_srgb(c.r), to_srgb(c.g), to_srgb(c.b));
+	return mix(12.92 * c, 1.055 * pow(c, vec3(0.4166667)) - 0.055, step(0.0031308, c));
 }
-
 
 vec3 oklch_to_oklab(vec3 c) {
 	return vec3 (
@@ -67,7 +56,7 @@ vec3 oklab_to_linear_srgb(vec3 c) {
 vec4 oklch_to_srgb(vec3 lch) {
 	vec3 rgb = oklab_to_linear_srgb(oklch_to_oklab(lch));
 
-	float a = any(lessThan(rgb, vec3(0.0))) || any(greaterThan(rgb, vec3(1.0))) ? 0.0 : 1.0;
+	float a = 1.0 - float(any(lessThan(rgb, vec3(0.0))) || any(greaterThan(rgb, vec3(1.0))));
 
 	return vec4(to_srgb(rgb), a);
 }
