@@ -11,18 +11,21 @@ in vec2 uv2;
 const float PI = 3.14159265358979323846;
 const float CHROMA_MAX = 0.33;
 
+// Diamond
 // const vec2 sample_positions[4] = vec2[4](
-// 	vec2(-0.219, -0.672),
-// 	vec2(-0.672, 0.219),
-// 	vec2(0.672, -0.219),
-// 	vec2(0.219, 0.672)
+// 	vec2(0.5, 0.),
+// 	vec2(0., 0.5),
+// 	vec2(-0.5, 0.),
+// 	vec2(0., -0.5)
 // );
 
+
+// Rotated grid (RGSS)
 const vec2 sample_positions[4] = vec2[4](
-	vec2(0.5, 0.),
-	vec2(0., 0.5),
-	vec2(-0.5, 0.),
-	vec2(0., -0.5)
+	vec2(1./8., 3./8.),
+	vec2(3./8., -1./8.),
+	vec2(-1./8., -3./8.),
+	vec2(-3./8., 1./8.)
 );
 
 vec3 to_srgb(vec3 c) {
