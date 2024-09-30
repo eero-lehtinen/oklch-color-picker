@@ -82,7 +82,7 @@ fn canvas_picker(ui: &mut egui::Ui) -> egui::Frame {
             top: 0.,
         })
         .fill(MID_GRAY.into())
-        .stroke(Stroke::new(14.0, MID_GRAY))
+        .stroke(Stroke::new(7.0, MID_GRAY))
         .rounding(0.)
 }
 
@@ -97,7 +97,7 @@ fn canvas_slider(ui: &mut egui::Ui) -> egui::Frame {
             top: h / 8.,
         })
         .fill(MID_GRAY.into())
-        .stroke(Stroke::new(4.0, MID_GRAY))
+        .stroke(Stroke::new(2.0, MID_GRAY))
         .rounding(0.)
 }
 
@@ -111,7 +111,7 @@ fn canvas_final(ui: &mut egui::Ui) -> egui::Frame {
             top: 4.,
         })
         .fill(MID_GRAY.into())
-        .stroke(Stroke::new(2.0, MID_GRAY))
+        .stroke(Stroke::new(1.0, MID_GRAY))
         .rounding(0.)
 }
 
@@ -539,7 +539,7 @@ impl App {
             let old_raw = raw;
             let text = |r| if r { "RAW" } else { "CSS" };
             ui.horizontal(|ui| {
-                egui::ComboBox::from_id_source("raw_or_css")
+                egui::ComboBox::from_id_salt("raw_or_css")
                     .width(90.)
                     .selected_text(text(raw))
                     .show_ui(ui, |ui| {
@@ -575,7 +575,7 @@ impl App {
                 ui: &mut egui::Ui,
                 value: &mut T,
             ) {
-                egui::ComboBox::from_id_source("format")
+                egui::ComboBox::from_id_salt("format")
                     .width(150.)
                     .selected_text(value.to_string().to_ascii_uppercase())
                     .show_ui(ui, |ui| {
