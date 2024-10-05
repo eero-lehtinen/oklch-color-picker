@@ -1,25 +1,29 @@
 var cacheName = "oklch-color-picker-pwa";
-var filesToCache = [
-  "./",
-  "./index.html",
-  "./oklch-color-picker.js",
-  "./oklch-color-picker_bg.wasm",
-];
 
-/* Start the service worker and cache all of the app's content */
-self.addEventListener("install", function (e) {
-  e.waitUntil(
-    caches.open(cacheName).then(function (cache) {
-      return cache.addAll(filesToCache);
-    }),
-  );
-});
+async function cacheFirst(request) {
+  const cached = await caches.match(request);
+  if (cached) {
+    return cached;
+  }
 
-/* Serve cached content when offline */
-self.addEventListener("fetch", function (e) {
-  e.respondWith(
-    caches.match(e.request).then(function (response) {
-      return response || fetch(e.request);
-    }),
-  );
+  try {
+    const res = await fetch(request);
+    if (res.ok) {
+      const cache = await caches.open(cacheName);
+      cache.put(request, res.clone());
+    }
+    return res;
+  } catch (error) {
+    return Response.error();
+  }
+}
+
+const cachePath =
+  /\/$|\/index\.html$|\/oklch-color-picker-(\w|\d)*\.js$|\/oklch-color-picker-(\w|\d)*_bg\.wasm$/;
+
+self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+  if (url.pathname.match(cachePath)) {
+    event.respondWith(cacheFirst(event.request));
+  }
 });
