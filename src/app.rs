@@ -459,7 +459,7 @@ impl App {
                         DragValue::from_get_set(get_set)
                             .speed(1. * 0.001)
                             .range(0.0..=1.0)
-                            .max_decimals(2),
+                            .max_decimals(4),
                     );
                     show_label(ui, "A");
                 });
