@@ -1,20 +1,16 @@
 var cacheName = "oklch-color-picker-pwa";
 
-async function cacheFirst(request) {
-  const cached = await caches.match(request);
-  if (cached) {
-    return cached;
-  }
-
+async function networkFirst(request) {
   try {
-    const res = await fetch(request);
-    if (res.ok) {
+    const networkResponse = await fetch(request);
+    if (networkResponse.ok) {
       const cache = await caches.open(cacheName);
-      cache.put(request, res.clone());
+      cache.put(request, networkResponse.clone());
     }
-    return res;
+    return networkResponse;
   } catch (error) {
-    return Response.error();
+    const cachedResponse = await caches.match(request);
+    return cachedResponse || Response.error();
   }
 }
 
@@ -24,6 +20,6 @@ const cachePath =
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (url.pathname.match(cachePath)) {
-    event.respondWith(cacheFirst(event.request));
+    event.respondWith(networkFirst(event.request));
   }
 });
