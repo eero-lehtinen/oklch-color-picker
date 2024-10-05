@@ -3,19 +3,23 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::formats::{format_color, parse_color, ColorFormat, CssColorFormat, RawColorFormat};
 use crate::gamut::{gamut_clip_preserve_chroma, Oklrcha};
 use crate::gl_programs::{GlowProgram, ProgramKind};
-use crate::{lerp, log_startup_time, map};
+use crate::{
+    formats::{format_color, parse_color, ColorFormat, CssColorFormat, RawColorFormat},
+    log_startup,
+};
+use crate::{lerp, map};
 use bevy_color::{ColorToPacked, LinearRgba, Oklcha, Srgba};
 use eframe::{
     egui::{self, ahash::HashMap, Color32, DragValue, Pos2, RichText, Stroke, Vec2},
     egui_glow,
     glow::{self},
 };
-use egui::{Rect, Widget};
+use egui::{show_tooltip_at_pointer, Rect, Widget};
 use egui_extras::{Size, Strip, StripBuilder};
 use strum::IntoEnumIterator;
+use web_time::{Duration, Instant};
 
 fn setup_egui_config(ctx: &egui::Context) {
     let mut fonts = egui::FontDefinitions::default();
@@ -127,6 +131,7 @@ pub struct App {
     first_frame: bool,
     frame_end_labels: Vec<(Rect, RichText)>,
     fallbacks: Fallbacks,
+    copied_notice: Option<Instant>,
 }
 
 #[derive(Default)]
@@ -140,9 +145,9 @@ struct Fallbacks {
 
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>, data: Arc<(Oklcha, ColorFormat, bool)>) -> Self {
-        log_startup_time("App new");
+        log_startup::log("App new");
         setup_egui_config(&cc.egui_ctx);
-        log_startup_time("Egui custom setup");
+        log_startup::log("Egui custom setup");
 
         let gl = cc.gl.as_ref().unwrap();
 
@@ -150,7 +155,7 @@ impl App {
             .map(|kind| (kind, Arc::new(Mutex::new(GlowProgram::new(gl, kind)))))
             .collect();
 
-        log_startup_time("Gl programs created");
+        log_startup::log("Gl programs created");
 
         let color = data.0.into();
 
@@ -166,6 +171,7 @@ impl App {
             first_frame: true,
             frame_end_labels: Default::default(),
             fallbacks: Default::default(),
+            copied_notice: None,
         }
     }
 
@@ -597,18 +603,47 @@ impl App {
 
             ui.style_mut().spacing.button_padding = egui::vec2(16.0, 8.0);
             ui.horizontal_centered(|ui| {
-                let button = egui::Button::new(RichText::new("DONE").size(26.0))
+                let text = if cfg!(target_arch = "wasm32") {
+                    "Copy to clipboard"
+                } else {
+                    "DONE"
+                };
+
+                let button = egui::Button::new(RichText::new(text).size(26.0))
                     .min_size(Vec2::new(
                         ui.available_size().x,
                         ui.available_size().y * 0.9,
                     ))
                     .stroke(egui::Stroke::new(1.0, self.fallbacks.cur_egui));
-                if ui.add(button).clicked() {
+                let response = ui.add(button);
+                if response.clicked() {
                     println!(
                         "{}",
                         format_color(self.fallbacks.cur, self.format, self.use_alpha)
                     );
-                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close)
+                    if cfg!(target_arch = "wasm32") {
+                        ui.ctx().copy_text(format_color(
+                            self.fallbacks.cur,
+                            self.format,
+                            self.use_alpha,
+                        ));
+                        self.copied_notice = Some(Instant::now());
+                    } else {
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close)
+                    }
+                }
+                if self
+                    .copied_notice
+                    .is_some_and(|i| i.elapsed() < Duration::from_millis(400))
+                {
+                    egui::show_tooltip_at_pointer(
+                        ui.ctx(),
+                        ui.layer_id(),
+                        egui::Id::new("copied_tooltip"),
+                        |ui| {
+                            ui.label("Copied!");
+                        },
+                    );
                 }
             });
         });
@@ -618,7 +653,7 @@ impl App {
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
         if self.first_frame {
-            log_startup_time("First frame start");
+            log_startup::log("First frame start");
             self.first_frame = false;
         }
 

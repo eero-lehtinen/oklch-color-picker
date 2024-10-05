@@ -1,5 +1,5 @@
 use bevy_color::{Color, ColorToComponents, ColorToPacked, Hsla, LinearRgba, Oklcha, Srgba};
-use strum::{EnumIter, EnumString, IntoEnumIterator};
+use strum::{EnumIter, EnumString};
 use winnow::{
     ascii::{digit0, digit1, space0, space1},
     combinator::{alt, delimited, opt, separated, terminated},
@@ -161,7 +161,10 @@ pub fn format_color(fallback: LinearRgba, format: ColorFormat, use_alpha: bool) 
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn parse_color_unknown_format(s: &str) -> Option<(Color, ColorFormat, bool)> {
+    use strum::IntoEnumIterator;
+
     let format_candidates = [RawColorFormat::Rgb, RawColorFormat::RgbFloat]
         .into_iter()
         .map(ColorFormat::Raw)

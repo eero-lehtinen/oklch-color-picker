@@ -1,20 +1,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{
-    env,
-    process::ExitCode,
-    sync::{Arc, Mutex},
-    time::Instant,
-};
-
 use bevy_color::Oklcha;
-use clap::Parser as _;
-use cli::{Cli, CliColorFormat};
-use eframe::egui::Vec2;
-use egui::ViewportBuilder;
-use formats::{parse_color, parse_color_unknown_format};
-use once_cell::sync::Lazy;
+use cli::CliColorFormat;
 use rand::{rngs::SmallRng, Rng, SeedableRng};
+#[cfg(not(target_arch = "wasm32"))]
+use std::process::ExitCode;
+use std::sync::Arc;
 
 mod app;
 mod cli;
@@ -22,11 +13,17 @@ mod formats;
 mod gamut;
 mod gl_programs;
 
+#[cfg(not(target_arch = "wasm32"))]
 fn main() -> ExitCode {
-    log_startup_init();
+    use clap::Parser as _;
+    use cli::Cli;
+    use egui::{Vec2, ViewportBuilder};
+    use formats::{parse_color, parse_color_unknown_format};
+
+    log_startup::init();
 
     let cli = Cli::parse();
-    log_startup_time("Cli parse");
+    log_startup::log("Cli parse");
 
     let (color, format, use_alpha) = match (cli.color, cli.format) {
         (Some(color_string), Some(cli_format)) => {
@@ -50,7 +47,7 @@ fn main() -> ExitCode {
         (None, Some(cli_format)) => (random_color(), cli_format.into(), true),
         (None, None) => (random_color(), CliColorFormat::default().into(), true),
     };
-    log_startup_time("Color parse");
+    log_startup::log("Color parse");
 
     let native_options = eframe::NativeOptions {
         renderer: eframe::Renderer::Glow,
@@ -70,26 +67,83 @@ fn main() -> ExitCode {
     ExitCode::SUCCESS
 }
 
-static INTERVAL_TIMER: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
-static STARTUP_TIMER: Lazy<Instant> = Lazy::new(Instant::now);
-static STARTUP_TIMER_ENABLED: Lazy<bool> = Lazy::new(|| env::var("STARTUP_TIMER").is_ok());
-fn log_startup_init() {
-    if *STARTUP_TIMER_ENABLED {
-        _ = STARTUP_TIMER.elapsed();
-        *INTERVAL_TIMER.lock().unwrap() = Instant::now();
+#[cfg(target_arch = "wasm32")]
+fn main() {
+    use eframe::wasm_bindgen::JsCast as _;
+
+    let web_options = eframe::WebOptions::default();
+
+    wasm_bindgen_futures::spawn_local(async {
+        let document = web_sys::window()
+            .expect("No window")
+            .document()
+            .expect("No document");
+
+        let canvas = document
+            .get_element_by_id("the_canvas_id")
+            .expect("Failed to find the_canvas_id")
+            .dyn_into::<web_sys::HtmlCanvasElement>()
+            .expect("the_canvas_id was not a HtmlCanvasElement");
+
+        let data = Arc::new((random_color(), CliColorFormat::default().into(), true));
+
+        let start_result = eframe::WebRunner::new()
+            .start(
+                canvas,
+                web_options,
+                Box::new(|cc| Ok(Box::new(app::App::new(cc, data)))),
+            )
+            .await;
+
+        // Remove the loading text and spinner:
+        if let Some(loading_text) = document.get_element_by_id("loading_text") {
+            match start_result {
+                Ok(_) => {
+                    loading_text.remove();
+                }
+                Err(e) => {
+                    loading_text.set_inner_html(
+                        "<p> The app has crashed. See the developer console for details. </p>",
+                    );
+                    panic!("Failed to start eframe: {e:?}");
+                }
+            }
+        }
+    });
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+mod log_startup {
+    use std::{env, sync::Mutex, time::Instant};
+
+    use once_cell::sync::Lazy;
+
+    static INTERVAL_TIMER: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
+    static STARTUP_TIMER: Lazy<Instant> = Lazy::new(Instant::now);
+    static STARTUP_TIMER_ENABLED: Lazy<bool> = Lazy::new(|| env::var("STARTUP_TIMER").is_ok());
+    pub fn init() {
+        if *STARTUP_TIMER_ENABLED {
+            _ = STARTUP_TIMER.elapsed();
+            *INTERVAL_TIMER.lock().unwrap() = Instant::now();
+        }
+    }
+    pub fn log(name: &str) {
+        if *STARTUP_TIMER_ENABLED {
+            let mut timer = INTERVAL_TIMER.lock().unwrap();
+            println!(
+                "{:<20}: {:>10.5}ms delta, {:>10.5}ms total",
+                name,
+                timer.elapsed().as_secs_f64() * 1000.,
+                STARTUP_TIMER.elapsed().as_secs_f64() * 1000.,
+            );
+            *timer = Instant::now();
+        }
     }
 }
-fn log_startup_time(name: &str) {
-    if *STARTUP_TIMER_ENABLED {
-        let mut timer = INTERVAL_TIMER.lock().unwrap();
-        println!(
-            "{:<20}: {:>10.5}ms delta, {:>10.5}ms total",
-            name,
-            timer.elapsed().as_secs_f64() * 1000.,
-            STARTUP_TIMER.elapsed().as_secs_f64() * 1000.,
-        );
-        *timer = Instant::now();
-    }
+
+#[cfg(target_arch = "wasm32")]
+mod log_startup {
+    pub fn log(_: &str) {}
 }
 
 fn random_color() -> Oklcha {

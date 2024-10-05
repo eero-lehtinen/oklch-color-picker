@@ -22,38 +22,59 @@ pub struct GlowProgram {
     program: glow::Program,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+macro_rules! shader_version {
+    () => {
+        "#version 330\n"
+    };
+}
+
+#[cfg(target_arch = "wasm32")]
+macro_rules! shader_version {
+    () => {
+        "#version 300 es\n"
+    };
+}
+
 impl GlowProgram {
     pub fn new(gl: &glow::Context, kind: ProgramKind) -> Self {
         unsafe {
             let program = gl.create_program().unwrap();
-            let vert_shader_source = include_str!("./shaders/quad_vert.glsl");
-
+            let vert_shader_source =
+                concat!(shader_version!(), include_str!("./shaders/quad_vert.glsl"));
             let frag_shader_source = match kind {
                 ProgramKind::Picker => concat!(
+                    shader_version!(),
                     include_str!("shaders/functions.glsl"),
                     include_str!("shaders/picker_frag.glsl")
                 ),
                 ProgramKind::Picker2 => concat!(
+                    shader_version!(),
                     include_str!("shaders/functions.glsl"),
                     include_str!("shaders/picker2_frag.glsl")
                 ),
                 ProgramKind::Hue => concat!(
+                    shader_version!(),
                     include_str!("shaders/functions.glsl"),
                     include_str!("shaders/hue_frag.glsl")
                 ),
                 ProgramKind::Lightness => concat!(
+                    shader_version!(),
                     include_str!("shaders/functions.glsl"),
                     include_str!("shaders/lightness_frag.glsl")
                 ),
                 ProgramKind::Chroma => concat!(
+                    shader_version!(),
                     include_str!("shaders/functions.glsl"),
                     include_str!("shaders/chroma_frag.glsl")
                 ),
                 ProgramKind::Alpha => concat!(
+                    shader_version!(),
                     include_str!("shaders/functions.glsl"),
                     include_str!("shaders/alpha_frag.glsl")
                 ),
                 ProgramKind::Final => concat!(
+                    shader_version!(),
                     include_str!("shaders/functions.glsl"),
                     include_str!("shaders/final_frag.glsl")
                 ),

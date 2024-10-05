@@ -1,5 +1,3 @@
-#version 330
-
 uniform vec2 size;
 
 out vec2 uv;
