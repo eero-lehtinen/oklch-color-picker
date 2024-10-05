@@ -1,6 +1,6 @@
 {
-  "name": "egui Template PWA",
-  "short_name": "egui-template-pwa",
+  "name": "Oklch Color Picker PWA",
+  "short_name": "oklch-color-picker-pwa",
   "icons": [
     {
       "src": "./icon-256.png",

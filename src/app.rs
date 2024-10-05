@@ -16,7 +16,7 @@ use eframe::{
     egui_glow,
     glow::{self},
 };
-use egui::{show_tooltip_at_pointer, Rect, Widget};
+use egui::{Rect, Widget};
 use egui_extras::{Size, Strip, StripBuilder};
 use strum::IntoEnumIterator;
 use web_time::{Duration, Instant};

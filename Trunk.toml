@@ -1,1 +1,2 @@
 [build]
+no_sri = true
