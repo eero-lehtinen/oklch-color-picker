@@ -2,7 +2,7 @@
 
 ![picker](https://github.com/user-attachments/assets/e75bd890-2833-4c40-ab80-fee55ef21db3)
 
-Try the web demo: https://eero-lehtinen.github.io/oklch-color-picker/
+Try the web demo: https://oklch.eerolehtinen.fi/
 
 ## Features
 
