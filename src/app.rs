@@ -310,6 +310,12 @@ impl App {
 
             let painter = ui.painter();
 
+            let stroke_color = if ui.ctx().theme() == egui::Theme::Dark {
+                LINE_COLOR2
+            } else {
+                LINE_COLOR
+            };
+
             painter.rect(
                 egui::Rect::from_center_size(
                     center,
@@ -317,7 +323,7 @@ impl App {
                 ),
                 4.,
                 slider_thumb_color,
-                Stroke::new(3.0, LINE_COLOR2),
+                Stroke::new(3.0, stroke_color),
             );
         };
 
