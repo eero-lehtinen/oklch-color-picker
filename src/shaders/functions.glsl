@@ -69,11 +69,12 @@ vec4 premultiply(vec4 color) {
 }
 
 vec4 blend_premultiplied(vec4 below, vec4 above) {
-	return above + below * (1. - above.a);
+	return vec4(above.rgb + below.rgb * (1. - above.a), above.a + below.a * (1. - above.a));
 }
 
-vec4 blend(vec3 below, vec4 above) {
-	return vec4(above.a * above.rgb + (1.0 - above.a) * below, 1.0);
+vec4 blend(vec4 below, vec4 above) {
+	float a = above.a + below.a * (1. - above.a);
+	return vec4((above.rgb * above.a + below.rgb * below.a * (1. - above.a)) / a, a);
 }
 
 float lr_to_l(float lr) {
@@ -104,7 +105,7 @@ vec4 checkerboard(float checker_size, float soften) {
 	vec2 b = abs(fract((2. * uv + soften) / 2.) - 0.5);
 	vec2 mask = (a - b) / soften;
 
-	return vec4(vec3(0.62), 0.5 - 0.5 * mask.x*mask.y);
+	return vec4(vec3(1.), (0.5 - 0.5 * mask.x*mask.y) * 0.25);
 }
 
 // vec4 rounded(vec4 color, float border_radius, vec2 uv, vec2 size) {
