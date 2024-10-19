@@ -31,6 +31,8 @@ rand = { version = "0.8.5", features = ["small_rng"] }
 strum = { version = "0.26.3", features = ["derive"] }
 web-time = "1.1.0"
 winnow = { version = "0.6.18", features = ["simd"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 interprocess = { version = "2.2.1", features = ["tokio"] }
 tokio = "1.40.0"
 
