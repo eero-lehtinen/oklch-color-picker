@@ -14,6 +14,9 @@ mod gamut;
 mod gl_programs;
 
 #[cfg(not(target_arch = "wasm32"))]
+mod parser_daemon;
+
+#[cfg(not(target_arch = "wasm32"))]
 fn main() -> ExitCode {
     use clap::Parser as _;
     use cli::Cli;
@@ -23,6 +26,11 @@ fn main() -> ExitCode {
     log_startup::init();
 
     let cli = Cli::parse();
+
+    if cli.as_parser_daemon {
+        return parser_daemon::start();
+    }
+
     log_startup::log("Cli parse");
 
     let (color, format, use_alpha) = match (cli.color, cli.format) {

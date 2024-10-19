@@ -10,6 +10,7 @@ keywords = ["color", "oklch", "oklab", "utility", "color-picker"]
 categories = ["visualization"]
 
 [dependencies]
+anyhow = "1.0.90"
 bevy_color = { version = "0.14.2", default-features = false }
 clap = { version = "4.5.17", features = ["derive"] }
 eframe = { version = "0.29.0", default-features = false, features = [
@@ -30,6 +31,8 @@ rand = { version = "0.8.5", features = ["small_rng"] }
 strum = { version = "0.26.3", features = ["derive"] }
 web-time = "1.1.0"
 winnow = { version = "0.6.18", features = ["simd"] }
+interprocess = { version = "2.2.1", features = ["tokio"] }
+tokio = "1.40.0"
 
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

@@ -184,7 +184,7 @@ pub fn parse_color(s: &str, input_format: ColorFormat) -> Option<(Color, bool)> 
     match input_format {
         ColorFormat::Css(css_format) => {
             let color: Color = match css_format {
-                CssColorFormat::Hex => Srgba::hex(s).ok()?.into(),
+                CssColorFormat::Hex => Srgba::hex(s.strip_prefix("#")?).ok()?.into(),
                 CssColorFormat::Oklch => oklch_parser.parse(s).ok()?.into(),
                 CssColorFormat::Rgb => rgb_parser.parse(s).ok()?.into(),
                 CssColorFormat::Hsl => hsl_parser.parse(s).ok()?.into(),
