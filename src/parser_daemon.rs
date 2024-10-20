@@ -90,8 +90,6 @@ pub fn start() -> ExitCode {
                         _ => {}
                     }
 
-                    println!("Got data {buffer}");
-
                     let Some(line) = buffer.strip_suffix("\n") else {
                         eprintln!("Read didn't end in newline!");
                         continue;
@@ -131,10 +129,6 @@ fn handle_message(srt: &str) -> anyhow::Result<String> {
             .split_once(";")
             .context("Read didn't contain the ';' delimiter !")?;
 
-        let number = number.parse::<u32>().context("invalid number")?;
-
-        println!("Got {number}: color {color} with format {fmt}");
-
         let format_result =
             |color: Color| formats::format_color(color.into(), CssColorFormat::Hex.into(), true);
 
@@ -162,6 +156,5 @@ fn handle_message(srt: &str) -> anyhow::Result<String> {
             .join("¿¿")
     );
 
-    println!("Sending response {response}");
     Ok(response)
 }
