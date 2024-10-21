@@ -124,7 +124,7 @@ fn handle_message(srt: &str) -> anyhow::Result<String> {
         .split_once(":")
         .context("Read didn't contain the ':' delimiter !")?;
 
-    let response_parts = rest.split("¿¿").map(|part| {
+    let response_parts = rest.split("§§").map(|part| {
         let (fmt, color) = part
             .split_once(";")
             .context("Read didn't contain the ';' delimiter !")?;
@@ -153,7 +153,7 @@ fn handle_message(srt: &str) -> anyhow::Result<String> {
         number,
         response_parts
             .collect::<anyhow::Result<Vec<_>>>()?
-            .join("¿¿")
+            .join("§§")
     );
 
     Ok(response)
