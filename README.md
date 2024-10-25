@@ -4,6 +4,8 @@
 
 Try the web demo: https://oklch.eerolehtinen.fi/
 
+[![Crates.io](https://img.shields.io/crates/v/oklch-color-picker)](https://crates.io/crates/oklch-color-picker)
+
 ## Features
 
 - Takes an input color as a cli argument and ouputs the edited color to stdout
