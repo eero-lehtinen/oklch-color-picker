@@ -165,13 +165,15 @@ pub fn format_color(fallback: LinearRgba, format: ColorFormat, use_alpha: bool) 
 pub fn parse_color_unknown_format(s: &str) -> Option<(Color, ColorFormat, bool)> {
     use strum::IntoEnumIterator;
 
+    let s = s.trim();
+
     let format_candidates = [RawColorFormat::Rgb, RawColorFormat::RgbFloat]
         .into_iter()
         .map(ColorFormat::Raw)
         .chain(CssColorFormat::iter().map(ColorFormat::Css));
 
     for format in format_candidates {
-        if let Some((parsed, use_alpha)) = parse_color(s, format) {
+        if let Some((parsed, use_alpha)) = parse_color_impl(s, format) {
             return Some((parsed, format, use_alpha));
         }
     }
@@ -180,7 +182,10 @@ pub fn parse_color_unknown_format(s: &str) -> Option<(Color, ColorFormat, bool)>
 
 pub fn parse_color(s: &str, input_format: ColorFormat) -> Option<(Color, bool)> {
     let s = s.trim();
+    parse_color_impl(s, input_format)
+}
 
+fn parse_color_impl(s: &str, input_format: ColorFormat) -> Option<(Color, bool)> {
     match input_format {
         ColorFormat::Css(css_format) => {
             let color: Color = match css_format {
@@ -327,7 +332,7 @@ where
     F: Parser<&'a str, (f32, f32, f32, f32), E>,
 {
     delimited(
-        (name, space0),
+        (name, "(", space0),
         inner.map(|arr| C::from_f32_array([arr.0, arr.1, arr.2, arr.3])),
         (space0, ")"),
     )
@@ -335,7 +340,7 @@ where
 
 fn oklch_parser(input: &mut &str) -> PResult<Oklcha> {
     color_read_parser(
-        "oklch(",
+        "oklch",
         (
             terminated(css_num_parser.map(|n| n.apply()), space1),
             terminated(css_num_parser.map(|n| n.apply_percent_max(0.4)), space1),
@@ -348,7 +353,7 @@ fn oklch_parser(input: &mut &str) -> PResult<Oklcha> {
 
 fn rgb_parser(input: &mut &str) -> PResult<Srgba> {
     color_read_parser(
-        "rgb(",
+        "rgb",
         (
             terminated(css_num_parser.map(|n| n.as_u8()), space1),
             terminated(css_num_parser.map(|n| n.as_u8()), space1),
@@ -361,7 +366,7 @@ fn rgb_parser(input: &mut &str) -> PResult<Srgba> {
 
 fn hsl_parser(input: &mut &str) -> PResult<Hsla> {
     color_read_parser(
-        "hsl(",
+        "hsl",
         (
             terminated(css_angle_parser, space1),
             terminated(css_num_parser.map(|n| n.apply()), space1),
