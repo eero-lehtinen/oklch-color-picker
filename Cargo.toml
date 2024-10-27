@@ -5,7 +5,7 @@ edition = "2021"
 license = "MIT"
 description = "A standalone graphical color picker using the Oklch color space. Allows output to hex, rgb, hsl and many other formats."
 repository = "https://github.com/eero-lehtinen/oklch-color-picker"
-readme = "readme.md"
+readme = "README.md"
 keywords = ["color", "oklch", "oklab", "utility", "color-picker"]
 categories = ["visualization"]
 
