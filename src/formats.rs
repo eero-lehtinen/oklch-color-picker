@@ -84,7 +84,20 @@ fn raw_alpha_u8(alpha: u8, use_alpha: bool) -> String {
 pub fn format_color(fallback: LinearRgba, format: ColorFormat, use_alpha: bool) -> String {
     match format {
         ColorFormat::Css(format) => match format {
-            CssColorFormat::Hex => Srgba::from(fallback).to_hex(),
+            CssColorFormat::Hex => {
+                let arr = Srgba::from(fallback).to_u8_array();
+                let short = arr.map(|c| (c / 17, c % 17));
+                let is_short = short.iter().all(|(_, rem)| *rem == 0);
+
+                let [r, g, b, a] = if is_short { short.map(|(d, _)| d) } else { arr };
+
+                match (is_short, arr[3]) {
+                    (true, 255) => format!("#{:x}{:x}{:x}", r, g, b),
+                    (true, _) => format!("#{:x}{:x}{:x}{:x}", r, g, b, a),
+                    (false, 255) => format!("#{:02x}{:02x}{:02x}", r, g, b),
+                    _ => format!("#{:02x}{:02x}{:02x}{:02x}", r, g, b, a),
+                }
+            }
             CssColorFormat::Rgb => {
                 let c = Srgba::from(fallback).to_u8_array_no_alpha();
                 format!(
