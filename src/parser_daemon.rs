@@ -9,8 +9,7 @@ use interprocess::local_socket::{
 use std::{fs, io, process::ExitCode};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
-use crate::cli::CliColorFormat;
-use crate::formats::{self, CssColorFormat};
+use crate::{cli::CliColorFormat, formats, gamut};
 
 const SOCKET_NAME: &str = concat!(env!("CARGO_PKG_NAME"), ".sock");
 
@@ -115,12 +114,12 @@ pub fn start() -> ExitCode {
     })
 }
 
-fn handle_message(srt: &str) -> anyhow::Result<String> {
-    if srt == "test" {
+fn handle_message(msg: &str) -> anyhow::Result<String> {
+    if msg == "test" {
         bail!("test");
     }
 
-    let (number, rest) = srt
+    let (number, rest) = msg
         .split_once(":")
         .context("Read didn't contain the ':' delimiter !")?;
 
@@ -129,8 +128,14 @@ fn handle_message(srt: &str) -> anyhow::Result<String> {
             .split_once(";")
             .context("Read didn't contain the ';' delimiter !")?;
 
-        let format_result =
-            |color: Color| formats::format_color(color.into(), CssColorFormat::Hex.into(), true);
+        let format_result = |color: Color| {
+            let color = if let Color::Oklcha(color) = color {
+                gamut::gamut_clip_preserve_chroma(color.into()).into()
+            } else {
+                color.into()
+            };
+            formats::format_normalized_hex_no_alpha(color)
+        };
 
         let response = if fmt == "auto" {
             match formats::parse_color_unknown_format(color) {
