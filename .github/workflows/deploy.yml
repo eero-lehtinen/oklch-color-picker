@@ -80,9 +80,12 @@ jobs:
           fi
 
       - name: Rename lib
+        working-directory: ./target/${{ matrix.target }}/release
         run: |
-          cd target/${{ matrix.target }}/release && mv libparser_lua_module.${{ matrix.lib_ext }} parser_lua_module.${{ matrix.lib_ext }}
-        if: matrix.build == 'linux'
+          lib="parser_lua_module.${{ matrix.lib_ext }}"
+          if [ test -f "lib$lib" ]; then
+            mv "lib$lib" "$lib"
+          fi
 
       - name: Upload the binaries
         uses: softprops/action-gh-release@v2
