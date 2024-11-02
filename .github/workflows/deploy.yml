@@ -19,14 +19,17 @@ jobs:
           - build: linux
             os: ubuntu-20.04
             target: x86_64-unknown-linux-gnu
+            lib_ext: "so"
 
           - build: macos
             os: macos-latest
             target: x86_64-apple-darwin
+            lib_ext: "dylib"
 
           - build: windows-gnu
             os: ubuntu-latest
             target: x86_64-pc-windows-gnu
+            lib_ext: "dll"
 
     steps:
       - uses: olegtarasov/get-tag@v2.1.2
@@ -51,7 +54,9 @@ jobs:
 
       - name: Build
         run: |
+          export MACOSX_DEPLOYMENT_TARGET="13"
           cargo build --release --target ${{ matrix.target }}
+          cargo build --lib --release --target ${{ matrix.target }}
 
       - name: Build archive
         shell: bash
@@ -74,8 +79,14 @@ jobs:
             echo "ASSET=$dirname.tar.gz" >> $GITHUB_ENV
           fi
 
+      - name: Rename lib
+        run: |
+          cd target/${{ matrix.target }}/release && mv libparser_lua_module.${{ matrix.lib_ext }} parser_lua_module.${{ matrix.lib_ext }}
+        if: matrix.build == 'linux'
+
       - name: Upload the binaries
         uses: softprops/action-gh-release@v2
         with:
           files: |
             ${{ env.ASSET }}
+            target/${{ matrix.target }}/release/parser_lua_module.${{ matrix.lib_ext }}

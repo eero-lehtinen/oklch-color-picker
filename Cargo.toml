@@ -9,6 +9,13 @@ readme = "README.md"
 keywords = ["color", "oklch", "oklab", "utility", "color-picker"]
 categories = ["visualization"]
 
+[lib]
+name = "parser_lua_module"
+crate-type = ["cdylib"]
+
+[[bin]]
+name = "oklch-color-picker"
+
 [dependencies]
 anyhow = "1.0.90"
 bevy_color = { version = "0.14.2", default-features = false }
@@ -26,6 +33,7 @@ egui_extras = { version = "0.29.0", default-features = false, features = [
 ] }
 enum-map = "2.7.3"
 lexical-parse-float = { version = "1.0.0", features = ["format"] }
+mlua = { version = "0.10.0", features = ["module", "luajit"] }
 once_cell = "1.19.0"
 rand = { version = "0.8.5", features = ["small_rng"] }
 strum = { version = "0.26.3", features = ["derive"] }

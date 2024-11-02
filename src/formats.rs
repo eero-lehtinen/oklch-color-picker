@@ -186,10 +186,11 @@ pub fn parse_color_unknown_format(s: &str) -> Option<(Color, ColorFormat, bool)>
 
     let s = s.trim();
 
-    let format_candidates = [RawColorFormat::Rgb, RawColorFormat::RgbFloat]
-        .into_iter()
-        .map(ColorFormat::Raw)
-        .chain(CssColorFormat::iter().map(ColorFormat::Css));
+    let format_candidates = CssColorFormat::iter().map(ColorFormat::Css).chain(
+        [RawColorFormat::Rgb, RawColorFormat::RgbFloat]
+            .into_iter()
+            .map(ColorFormat::Raw),
+    );
 
     for format in format_candidates {
         if let Some((parsed, use_alpha)) = parse_color_impl(s, format) {

@@ -14,10 +14,6 @@ pub struct Cli {
 
     /// Color to pre-select (default: get a random color)
     pub color: Option<String>,
-
-    /// Launch as a background process using pipes for quickly parsing supported colors.
-    #[arg(short, long)]
-    pub as_parser_daemon: bool,
 }
 
 #[derive(ValueEnum, Default, Clone, Copy, strum::Display)]
