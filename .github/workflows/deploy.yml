@@ -51,6 +51,8 @@ jobs:
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.build }}
 
       - name: Build
         run: |
