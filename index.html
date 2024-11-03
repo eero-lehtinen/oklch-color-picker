@@ -12,9 +12,12 @@
     <!-- change this to your project name -->
     <title>Oklch Color Picker</title>
 
-    <!-- config for our rust wasm binary. go to https://trunkrs.dev/assets/#rust for more customization -->
-    <link data-trunk rel="rust" data-wasm-opt="2" />
-    <!-- this is the base url relative to which other urls will be constructed. trunk will insert this from the public-url option -->
+    <link
+      data-trunk
+      rel="rust"
+      data-wasm-opt="2"
+      data-bin="oklch-color-picker"
+    />
     <base data-trunk-public-url />
 
     <link data-trunk rel="icon" href="assets/favicon.ico" />
