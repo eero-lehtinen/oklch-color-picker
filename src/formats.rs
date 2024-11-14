@@ -82,11 +82,13 @@ fn raw_alpha_u8(alpha: u8, use_alpha: bool) -> String {
 }
 
 /// Hex with no alpha, always long form
+#[allow(unused)]
 pub fn format_normalized_hex_no_alpha(color: Srgba) -> String {
     let [r, g, b, _] = color.to_u8_array();
     format!("#{:02x}{:02x}{:02x}", r, g, b)
 }
 
+#[allow(unused)]
 pub fn format_color(fallback: LinearRgba, format: ColorFormat, use_alpha: bool) -> String {
     match format {
         ColorFormat::Css(format) => match format {
@@ -211,8 +213,16 @@ fn parse_color_impl(s: &str, input_format: ColorFormat) -> Option<(Color, bool)>
             let color: Color = match css_format {
                 CssColorFormat::Hex => Srgba::hex(s.strip_prefix("#")?).ok()?.into(),
                 CssColorFormat::Oklch => oklch_parser.parse(s).ok()?.into(),
-                CssColorFormat::Rgb => rgb_parser.parse(s).ok()?.into(),
-                CssColorFormat::Hsl => hsl_parser.parse(s).ok()?.into(),
+                CssColorFormat::Rgb => rgb_parser
+                    .parse(s)
+                    .or_else(|_| rgb_legacy_parser.parse(s))
+                    .ok()?
+                    .into(),
+                CssColorFormat::Hsl => hsl_parser
+                    .parse(s)
+                    .or_else(|_| hsl_legacy_parser.parse(s))
+                    .ok()?
+                    .into(),
             };
 
             Some((color, true))
@@ -280,7 +290,7 @@ fn color_components_u8_parser<C: ColorToPacked + Into<Color>>(
 
 enum CssNum {
     Num(f32),
-    Percent(f32),
+    Percentage(CssPercentage),
 }
 
 impl CssNum {
@@ -291,23 +301,45 @@ impl CssNum {
     fn apply_percent_max(self, max: f32) -> f32 {
         match self {
             Self::Num(n) => n,
-            Self::Percent(n) => n / 100. * max,
+            Self::Percentage(n) => n.apply_percent_max(max),
         }
     }
 
     fn as_u8(&self) -> f32 {
         match self {
             Self::Num(n) => n.round() / 255.,
-            Self::Percent(n) => n / 100. * 255.,
+            Self::Percentage(n) => n.as_u8(),
         }
     }
 }
 
-fn css_num_parser(input: &mut &str) -> PResult<CssNum> {
+struct CssPercentage(f32);
+
+impl CssPercentage {
+    fn apply(self) -> f32 {
+        self.apply_percent_max(1.)
+    }
+
+    fn apply_percent_max(self, max: f32) -> f32 {
+        self.0 / 100. * max
+    }
+
+    fn as_u8(&self) -> f32 {
+        self.0 / 100. * 255.
+    }
+}
+
+fn css_percentage_parser(input: &mut &str) -> PResult<CssPercentage> {
+    terminated(js_float_parser, "%")
+        .map(CssPercentage)
+        .parse_next(input)
+}
+
+fn css_legacy_num_parser(input: &mut &str) -> PResult<CssNum> {
     (js_float_parser, opt("%"))
         .map(|(n, p)| {
             if p.is_some() {
-                CssNum::Percent(n)
+                CssNum::Percentage(CssPercentage(n))
             } else {
                 CssNum::Num(n)
             }
@@ -315,7 +347,11 @@ fn css_num_parser(input: &mut &str) -> PResult<CssNum> {
         .parse_next(input)
 }
 
-fn css_angle_parser(input: &mut &str) -> PResult<f32> {
+fn css_num_parser(input: &mut &str) -> PResult<CssNum> {
+    alt((css_legacy_num_parser, "none".map(|_| CssNum::Num(0.)))).parse_next(input)
+}
+
+fn css_legacy_hue_parser(input: &mut &str) -> PResult<f32> {
     (js_float_parser, opt(alt(("deg", "rad", "grad", "turn"))))
         .map(|(n, unit)| {
             if let Some(unit) = unit {
@@ -334,6 +370,10 @@ fn css_angle_parser(input: &mut &str) -> PResult<f32> {
         .parse_next(input)
 }
 
+fn css_hue_parser(input: &mut &str) -> PResult<f32> {
+    alt((css_legacy_hue_parser, "none".map(|_| 0.))).parse_next(input)
+}
+
 fn css_alpha_parser(input: &mut &str) -> PResult<f32> {
     opt(delimited(
         (space0, '/', space0),
@@ -344,12 +384,23 @@ fn css_alpha_parser(input: &mut &str) -> PResult<f32> {
     .parse_next(input)
 }
 
-fn color_read_parser<'a, F, C: ColorToComponents, E: ParserError<&'a str>>(
-    name: &'static str,
-    inner: F,
+fn css_legacy_alpha_parser(input: &mut &str) -> PResult<f32> {
+    opt(delimited(
+        (space0, ',', space0),
+        css_num_parser.map(|n| n.apply()),
+        space0,
+    ))
+    .map(|n| n.unwrap_or(1.))
+    .parse_next(input)
+}
+
+fn color_read_parser<'a, F1, F2, C: ColorToComponents, E: ParserError<&'a str>>(
+    name: F1,
+    inner: F2,
 ) -> impl Parser<&'a str, C, E>
 where
-    F: Parser<&'a str, (f32, f32, f32, f32), E>,
+    F1: Parser<&'a str, (), E>,
+    F2: Parser<&'a str, (f32, f32, f32, f32), E>,
 {
     delimited(
         (name, "(", space0),
@@ -360,11 +411,11 @@ where
 
 fn oklch_parser(input: &mut &str) -> PResult<Oklcha> {
     color_read_parser(
-        "oklch",
+        "oklch".void(),
         (
             terminated(css_num_parser.map(|n| n.apply()), space1),
             terminated(css_num_parser.map(|n| n.apply_percent_max(0.4)), space1),
-            css_angle_parser,
+            css_hue_parser,
             css_alpha_parser,
         ),
     )
@@ -373,7 +424,7 @@ fn oklch_parser(input: &mut &str) -> PResult<Oklcha> {
 
 fn rgb_parser(input: &mut &str) -> PResult<Srgba> {
     color_read_parser(
-        "rgb",
+        "rgb".void(),
         (
             terminated(css_num_parser.map(|n| n.as_u8()), space1),
             terminated(css_num_parser.map(|n| n.as_u8()), space1),
@@ -386,12 +437,47 @@ fn rgb_parser(input: &mut &str) -> PResult<Srgba> {
 
 fn hsl_parser(input: &mut &str) -> PResult<Hsla> {
     color_read_parser(
-        "hsl",
+        "hsl".void(),
         (
-            terminated(css_angle_parser, space1),
+            terminated(css_hue_parser, space1),
             terminated(css_num_parser.map(|n| n.apply()), space1),
             css_num_parser.map(|n| n.apply()),
             css_alpha_parser,
+        ),
+    )
+    .parse_next(input)
+}
+
+fn rgb_legacy_parser(input: &mut &str) -> PResult<Srgba> {
+    color_read_parser(
+        ("rgb", opt('a')).void(),
+        (
+            terminated(
+                css_legacy_num_parser.map(|n| n.as_u8()),
+                (space0, ',', space0),
+            ),
+            terminated(
+                css_legacy_num_parser.map(|n| n.as_u8()),
+                (space0, ',', space0),
+            ),
+            css_legacy_num_parser.map(|n| n.as_u8()),
+            css_legacy_alpha_parser,
+        ),
+    )
+    .parse_next(input)
+}
+
+fn hsl_legacy_parser(input: &mut &str) -> PResult<Hsla> {
+    color_read_parser(
+        ("hsl", opt('a')).void(),
+        (
+            terminated(css_legacy_hue_parser, (space0, ',', space0)),
+            terminated(
+                css_percentage_parser.map(|p| p.apply()),
+                (space0, ',', space0),
+            ),
+            css_percentage_parser.map(|p| p.apply()),
+            css_legacy_alpha_parser,
         ),
     )
     .parse_next(input)
@@ -522,6 +608,22 @@ mod tests {
     #[test]
     fn fail_rgb4() {
         assert_eq!(parse_color("rgb(x 1 1%)", CssColorFormat::Rgb.into()), None);
+    }
+
+    #[test]
+    fn rgb_legacy() {
+        assert_eq!(
+            parse_color("rgba(255, 255, 255, 0.5)", CssColorFormat::Rgb.into()).unwrap(),
+            (Srgba::new(1., 1., 1., 0.5).into(), true)
+        );
+    }
+
+    #[test]
+    fn hsl_legacy() {
+        assert_eq!(
+            parse_color("hsla(50, 10%, 10%, 0.5)", CssColorFormat::Hsl.into()).unwrap(),
+            (Hsla::new(50., 0.1, 0.1, 0.5).into(), true)
+        );
     }
 
     #[test]
