@@ -81,13 +81,6 @@ fn raw_alpha_u8(alpha: u8, use_alpha: bool) -> String {
     }
 }
 
-/// Hex with no alpha, always long form
-#[allow(unused)]
-pub fn format_normalized_hex_no_alpha(color: Srgba) -> String {
-    let [r, g, b, _] = color.to_u8_array();
-    format!("#{:02x}{:02x}{:02x}", r, g, b)
-}
-
 #[allow(unused)]
 pub fn format_color(fallback: LinearRgba, format: ColorFormat, use_alpha: bool) -> String {
     match format {

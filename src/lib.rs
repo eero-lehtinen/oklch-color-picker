@@ -5,7 +5,7 @@ mod gamut;
 #[cfg(not(target_arch = "wasm32"))]
 mod lua {
     use super::*;
-    use bevy_color::Color;
+    use bevy_color::{Color, ColorToPacked, Srgba};
     use clap::ValueEnum;
     use cli::CliColorFormat;
     use mlua::prelude::*;
@@ -22,7 +22,7 @@ mod lua {
         Ok(env!("CARGO_PKG_VERSION"))
     }
 
-    fn color_to_hex(_: &Lua, (color, fmt): (String, Option<String>)) -> LuaResult<Option<String>> {
+    fn parse(_: &Lua, (color, fmt): (String, Option<String>)) -> LuaResult<Option<u32>> {
         let color = if let Some(fmt) = fmt {
             let parsed_fmt =
                 CliColorFormat::from_str(&fmt, true).map_err(LuaError::RuntimeError)?;
@@ -39,13 +39,16 @@ mod lua {
 
         let color = gamut_clip(color);
 
-        Ok(Some(formats::format_normalized_hex_no_alpha(color.into())))
+        let srgb = Srgba::from(color);
+        let [r, g, b] = srgb.to_u8_array_no_alpha();
+
+        Ok(Some((r as u32) << 16 | (g as u32) << 8 | b as u32))
     }
 
     #[mlua::lua_module(skip_memory_check)]
     fn parser_lua_module(lua: &Lua) -> LuaResult<LuaTable> {
         let exports = lua.create_table()?;
-        exports.set("color_to_hex", lua.create_function(color_to_hex)?)?;
+        exports.set("parse", lua.create_function(parse)?)?;
         exports.set("version", lua.create_function(version)?)?;
         Ok(exports)
     }
