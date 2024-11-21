@@ -1,12 +1,9 @@
-use std::{
-    fmt::{Debug, Display},
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 use crate::gamut::{gamut_clip_preserve_chroma, Oklrcha};
 use crate::gl_programs::{GlowProgram, ProgramKind};
 use crate::{
-    formats::{format_color, parse_color, ColorFormat, CssColorFormat, RawColorFormat},
+    formats::{format_color, parse_color, ColorFormat},
     log_startup,
 };
 use crate::{lerp, map};
@@ -127,8 +124,6 @@ pub struct App {
     color: Oklrcha,
     format: ColorFormat,
     use_alpha: bool,
-    prev_css: CssColorFormat,
-    prev_raw: RawColorFormat,
     programs: HashMap<ProgramKind, Arc<Mutex<GlowProgram>>>,
     input_text: HashMap<u8, String>,
     first_frame: bool,
@@ -166,8 +161,6 @@ impl App {
             prev_color: color,
             color,
             format: data.1,
-            prev_css: Default::default(),
-            prev_raw: Default::default(),
             use_alpha: data.2,
             programs,
             input_text: Default::default(),
@@ -550,19 +543,17 @@ impl App {
                 .size = 18.;
             style.spacing.button_padding = egui::vec2(4.0, 3.0);
 
-            let mut raw = matches!(self.format, ColorFormat::Raw(_));
-            let old_raw = raw;
-            let text = |r| if r { "RAW" } else { "CSS" };
             ui.horizontal(|ui| {
-                egui::ComboBox::from_id_salt("raw_or_css")
-                    .width(90.)
-                    .selected_text(text(raw))
+                egui::ComboBox::from_id_salt("format")
+                    .width(180.)
+                    .selected_text(self.format.to_string())
+                    .height(500.)
                     .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut raw, false, text(false));
-                        ui.selectable_value(&mut raw, true, text(true));
+                        for format in ColorFormat::iter() {
+                            ui.selectable_value(&mut self.format, format, format.to_string());
+                        }
                     });
-
-                if raw
+                if self.format.needs_explicit_alpha()
                     && ui
                         .add(egui::Checkbox::new(
                             &mut self.use_alpha,
@@ -574,36 +565,6 @@ impl App {
                     self.color.alpha = 1.;
                 }
             });
-            ui.add_space(4.0);
-            if raw != old_raw {
-                if raw {
-                    self.format = ColorFormat::Raw(self.prev_raw);
-                } else {
-                    self.format = ColorFormat::Css(self.prev_css);
-                }
-                match self.format {
-                    ColorFormat::Css(css) => self.prev_css = css,
-                    ColorFormat::Raw(r) => self.prev_raw = r,
-                }
-            }
-            fn format_combo<T: IntoEnumIterator + Display + Debug + PartialEq + Copy>(
-                ui: &mut egui::Ui,
-                value: &mut T,
-            ) {
-                egui::ComboBox::from_id_salt("format")
-                    .width(150.)
-                    .selected_text(value.to_string())
-                    .height(300.)
-                    .show_ui(ui, |ui| {
-                        for format in T::iter() {
-                            ui.selectable_value(value, format, format.to_string());
-                        }
-                    });
-            }
-            match &mut self.format {
-                ColorFormat::Css(css_format) => format_combo(ui, css_format),
-                ColorFormat::Raw(raw_format) => format_combo(ui, raw_format),
-            }
 
             ui.add_space(5.);
 

@@ -1,7 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use bevy_color::Oklcha;
-use cli::CliColorFormat;
+use formats::ColorFormat;
 use rand::{rngs::SmallRng, Rng, SeedableRng};
 #[cfg(not(target_arch = "wasm32"))]
 use std::process::ExitCode;
@@ -27,16 +27,16 @@ fn main() -> ExitCode {
     log_startup::log("Cli parse");
 
     let (color, format, use_alpha) = match (cli.color, cli.format) {
-        (Some(color_string), Some(cli_format)) => {
-            let Some((color, use_alpha)) = parse_color(&color_string, cli_format.into()) else {
+        (Some(color_string), Some(format)) => {
+            let Some((color, use_alpha)) = parse_color(&color_string, format) else {
                 eprintln!(
                     "Invalid color '{}' for specified format '{}'",
-                    color_string, cli_format
+                    color_string, format
                 );
                 return ExitCode::FAILURE;
             };
 
-            (color.into(), cli_format.into(), use_alpha)
+            (color.into(), format, use_alpha)
         }
         (Some(color_string), None) => {
             let Some((color, format, use_alpha)) = parse_color_unknown_format(&color_string) else {
@@ -45,8 +45,8 @@ fn main() -> ExitCode {
             };
             (color.into(), format, use_alpha)
         }
-        (None, Some(cli_format)) => (random_color(), cli_format.into(), true),
-        (None, None) => (random_color(), CliColorFormat::default().into(), true),
+        (None, Some(format)) => (random_color(), format, true),
+        (None, None) => (random_color(), ColorFormat::default(), true),
     };
     log_startup::log("Color parse");
 
@@ -86,7 +86,7 @@ fn main() {
             .dyn_into::<web_sys::HtmlCanvasElement>()
             .expect("the_canvas_id was not a HtmlCanvasElement");
 
-        let data = Arc::new((random_color(), CliColorFormat::default().into(), true));
+        let data = Arc::new((random_color(), ColorFormat::default(), true));
 
         let start_result = eframe::WebRunner::new()
             .start(

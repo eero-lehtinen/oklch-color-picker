@@ -1,4 +1,3 @@
-mod cli;
 mod formats;
 mod gamut;
 
@@ -7,7 +6,7 @@ mod lua {
     use super::*;
     use bevy_color::{Color, ColorToPacked, Srgba};
     use clap::ValueEnum;
-    use cli::CliColorFormat;
+    use formats::ColorFormat;
     use mlua::prelude::*;
 
     fn gamut_clip(color: Color) -> Color {
@@ -24,9 +23,8 @@ mod lua {
 
     fn parse(_: &Lua, (color, fmt): (String, Option<String>)) -> LuaResult<Option<u32>> {
         let color = if let Some(fmt) = fmt {
-            let parsed_fmt =
-                CliColorFormat::from_str(&fmt, true).map_err(LuaError::RuntimeError)?;
-            match formats::parse_color(&color, parsed_fmt.into()) {
+            let parsed_fmt = ColorFormat::from_str(&fmt, true).map_err(LuaError::RuntimeError)?;
+            match formats::parse_color(&color, parsed_fmt) {
                 Some((c, _)) => c,
                 None => return Ok(None),
             }

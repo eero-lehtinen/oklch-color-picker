@@ -9,12 +9,14 @@ readme = "README.md"
 keywords = ["color", "oklch", "oklab", "utility", "color-picker"]
 categories = ["visualization"]
 
-[lib]
-name = "parser_lua_module"
-crate-type = ["cdylib"]
-
 [[bin]]
 name = "oklch-color-picker"
+
+[lib]
+name = "parser_lua_module"
+path = "src/parser_lua_module.rs"
+crate-type = ["cdylib"]
+
 
 [dependencies]
 anyhow = "1.0.90"
