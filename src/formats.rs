@@ -37,7 +37,7 @@ pub enum RawColorFormat {
     RgbFloat,
     RgbLinear,
     Oklch,
-    // TODO: Octal hex
+    HexLiteral,
 }
 
 impl From<RawColorFormat> for ColorFormat {
@@ -171,6 +171,14 @@ pub fn format_color(fallback: LinearRgba, format: ColorFormat, use_alpha: bool) 
                     raw_alpha(c.alpha, use_alpha)
                 )
             }
+            RawColorFormat::HexLiteral => {
+                let [r, g, b, a] = Srgba::from(fallback).to_u8_array();
+                if use_alpha {
+                    format!("0x{:02X}{:02X}{:02X}{:02X}", a, r, g, b)
+                } else {
+                    format!("0x{:02X}{:02X}{:02X}", r, g, b)
+                }
+            }
         },
     }
 }
@@ -182,9 +190,13 @@ pub fn parse_color_unknown_format(s: &str) -> Option<(Color, ColorFormat, bool)>
     let s = s.trim();
 
     let format_candidates = CssColorFormat::iter().map(ColorFormat::Css).chain(
-        [RawColorFormat::Rgb, RawColorFormat::RgbFloat]
-            .into_iter()
-            .map(ColorFormat::Raw),
+        [
+            RawColorFormat::HexLiteral,
+            RawColorFormat::Rgb,
+            RawColorFormat::RgbFloat,
+        ]
+        .into_iter()
+        .map(ColorFormat::Raw),
     );
 
     for format in format_candidates {
@@ -204,7 +216,9 @@ fn parse_color_impl(s: &str, input_format: ColorFormat) -> Option<(Color, bool)>
     match input_format {
         ColorFormat::Css(css_format) => {
             let color: Color = match css_format {
-                CssColorFormat::Hex => Srgba::hex(s.strip_prefix("#")?).ok()?.into(),
+                CssColorFormat::Hex => parse_hex(s.strip_prefix("#")?, true)
+                    .map(|(c, _)| c)?
+                    .into(),
                 CssColorFormat::Oklch => oklch_parser.parse(s).ok()?.into(),
                 CssColorFormat::Rgb => rgb_parser
                     .parse(s)
@@ -227,8 +241,51 @@ fn parse_color_impl(s: &str, input_format: ColorFormat) -> Option<(Color, bool)>
                 color_components_parser::<LinearRgba>.parse(s).ok()?.into()
             }
             RawColorFormat::Oklch => color_components_parser::<Oklcha>.parse(s).ok()?.into(),
+            RawColorFormat::HexLiteral => parse_hex(s.strip_prefix("0x")?, false)
+                .map(|(c, has_alpha)| {
+                    let mut parts = c.to_f32_array();
+                    // Read as ARGB instead of RGBA
+                    if has_alpha {
+                        parts.rotate_right(3);
+                    }
+                    (Srgba::from_f32_array(parts).into(), has_alpha)
+                })?
+                .into(),
         },
     }
+}
+
+// Modified from bevy_color to be more general
+pub fn parse_hex(hex: &str, allow_short: bool) -> Option<(Srgba, bool)> {
+    match hex.len() {
+        // RGB
+        3 if allow_short => {
+            let [l, b] = u16::from_str_radix(hex, 16).ok()?.to_be_bytes();
+            let (r, g, b) = (l & 0x0F, (b & 0xF0) >> 4, b & 0x0F);
+            (Srgba::rgb_u8(r << 4 | r, g << 4 | g, b << 4 | b), false)
+        }
+        // RGBA
+        4 if allow_short => {
+            let [l, b] = u16::from_str_radix(hex, 16).ok()?.to_be_bytes();
+            let (r, g, b, a) = ((l & 0xF0) >> 4, l & 0xF, (b & 0xF0) >> 4, b & 0x0F);
+            (
+                Srgba::rgba_u8(r << 4 | r, g << 4 | g, b << 4 | b, a << 4 | a),
+                true,
+            )
+        }
+        // RRGGBB
+        6 => {
+            let [_, r, g, b] = u32::from_str_radix(hex, 16).ok()?.to_be_bytes();
+            (Srgba::rgb_u8(r, g, b), false)
+        }
+        // RRGGBBAA
+        8 => {
+            let [r, g, b, a] = u32::from_str_radix(hex, 16).ok()?.to_be_bytes();
+            (Srgba::rgba_u8(r, g, b, a), true)
+        }
+        _ => return None,
+    }
+    .into()
 }
 
 fn js_float_parser(input: &mut &str) -> PResult<f32> {
@@ -682,6 +739,22 @@ mod tests {
         assert_eq!(
             parse_color("0, 0, 0, 0, 0", RawColorFormat::RgbFloat.into()),
             None
+        );
+    }
+
+    #[test]
+    fn raw_hex_literal() {
+        assert_eq!(
+            parse_color("0x001122", RawColorFormat::HexLiteral.into()),
+            Some((Srgba::rgb_u8(0, 17, 34).into(), false))
+        );
+    }
+
+    #[test]
+    fn raw_hex_literal_alpha() {
+        assert_eq!(
+            parse_color("0x33001122", RawColorFormat::HexLiteral.into()),
+            Some((Srgba::rgba_u8(0, 17, 34, 51).into(), true))
         );
     }
 }

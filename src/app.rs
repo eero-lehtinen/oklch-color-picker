@@ -592,14 +592,11 @@ impl App {
             ) {
                 egui::ComboBox::from_id_salt("format")
                     .width(150.)
-                    .selected_text(value.to_string().to_ascii_uppercase())
+                    .selected_text(value.to_string())
+                    .height(300.)
                     .show_ui(ui, |ui| {
                         for format in T::iter() {
-                            ui.selectable_value(
-                                value,
-                                format,
-                                format.to_string().to_ascii_uppercase(),
-                            );
+                            ui.selectable_value(value, format, format.to_string());
                         }
                     });
             }
