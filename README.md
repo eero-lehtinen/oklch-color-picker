@@ -1,6 +1,6 @@
 # Oklch Color Picker
 
-![picker](https://github.com/user-attachments/assets/e75bd890-2833-4c40-ab80-fee55ef21db3)
+<img src="https://github.com/user-attachments/assets/7d809284-3c2b-48ed-a558-ed1c7cc41dd5" width="100%" alt="screenshot">
 
 [![Crates.io](https://img.shields.io/crates/v/oklch-color-picker)](https://crates.io/crates/oklch-color-picker)
 
