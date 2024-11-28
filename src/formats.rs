@@ -416,7 +416,7 @@ fn css_alpha_parser(input: &mut &str) -> PResult<f32> {
 fn css_legacy_alpha_parser(input: &mut &str) -> PResult<f32> {
     opt(delimited(
         (space0, ',', space0),
-        css_num_parser.map(|n| n.apply()),
+        css_legacy_num_parser.map(|n| n.apply()),
         space0,
     ))
     .map(|n| n.unwrap_or(1.))
@@ -481,17 +481,22 @@ fn rgb_legacy_parser(input: &mut &str) -> PResult<Srgba> {
     color_read_parser(
         ("rgb", opt('a')).void(),
         (
-            terminated(
-                css_legacy_num_parser.map(|n| n.as_u8()),
-                (space0, ',', space0),
-            ),
-            terminated(
-                css_legacy_num_parser.map(|n| n.as_u8()),
-                (space0, ',', space0),
-            ),
-            css_legacy_num_parser.map(|n| n.as_u8()),
+            terminated(css_legacy_num_parser, (space0, ',', space0)),
+            terminated(css_legacy_num_parser, (space0, ',', space0)),
+            css_legacy_num_parser,
             css_legacy_alpha_parser,
-        ),
+        )
+            .verify(|(r, g, b, _)| {
+                matches!(
+                    (r, g, b),
+                    (
+                        CssNum::Percentage(_),
+                        CssNum::Percentage(_),
+                        CssNum::Percentage(_)
+                    ) | (CssNum::Num(_), CssNum::Num(_), CssNum::Num(_))
+                )
+            })
+            .map(|(r, g, b, a)| (r.as_u8(), g.as_u8(), b.as_u8(), a)),
     )
     .parse_next(input)
 }
@@ -628,7 +633,6 @@ mod tests {
     fn fail_rgb2() {
         assert_eq!(parse_color("rgb(1 2)", ColorFormat::Rgb), None);
     }
-
     #[test]
     fn fail_rgb3() {
         assert_eq!(parse_color("rgb()", ColorFormat::Rgb), None);
@@ -645,6 +649,11 @@ mod tests {
             parse_color("rgba(255, 255, 255, 0.5)", ColorFormat::Rgb).unwrap(),
             (Srgba::new(1., 1., 1., 0.5).into(), true)
         );
+    }
+
+    #[test]
+    fn fail_rgb_legacy_mixed_units() {
+        assert_eq!(parse_color("rgb(1.0%, 1, 1)", ColorFormat::Rgb), None);
     }
 
     #[test]
