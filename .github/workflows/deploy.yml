@@ -57,9 +57,10 @@ jobs:
 
       - name: Build
         run: |
-          export MACOSX_DEPLOYMENT_TARGET="13"
           cargo build --release --target ${{ matrix.target }}
           cargo build --lib --release --target ${{ matrix.target }}
+        env:
+          MACOSX_DEPLOYMENT_TARGET: 13
 
       - name: Build archive
         shell: bash
