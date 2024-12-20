@@ -1,0 +1,250 @@
+<!doctype html>
+<html>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+  <!-- Disable zooming: -->
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, user-scalable=no"
+  />
+
+  <head>
+    <title>Oklch Color Picker</title>
+    <meta
+      name="description"
+      content="A color picker using the human friendly Oklch color space. Allows output to hex, rgb, hsl and many other formats."
+    />
+
+    
+<script type="module" nonce="JZU24uPMe6LqLSmlzc0qsQ==">
+import init, * as bindings from '/oklch-color-picker-6d7f13fd0b96d90.js';
+const wasm = await init({ module_or_path: '/oklch-color-picker-6d7f13fd0b96d90_bg.wasm' });
+
+
+window.wasmBindings = bindings;
+
+
+dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
+
+</script>
+    <base href="/" />
+
+    <link rel="icon" href="/favicon-f402c8741ce815ec.ico"/>
+
+    
+    
+    
+    
+    
+    
+    <!-- <link -->
+    <!--   data-trunk -->
+    <!--   rel="copy-file" -->
+    <!--   href="assets/icon_ios_touch_192.png" -->
+    <!--   data-target-path="assets" -->
+    <!-- /> -->
+    <!-- <link -->
+    <!--   data-trunk -->
+    <!--   rel="copy-file" -->
+    <!--   href="assets/maskable_icon_x512.png" -->
+    <!--   data-target-path="assets" -->
+    <!-- /> -->
+
+    <link rel="manifest" href="assets/manifest.json" />
+    <!-- <link rel="apple-touch-icon" href="assets/icon_ios_touch_192.png" /> -->
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: light)"
+      content="white"
+    />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: dark)"
+      content="#1a1a1a"
+    />
+
+    <style>
+      :root {
+        --bg: #f8f8f8;
+        --fg: #090909;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1a1a1a;
+          --fg: #d5d5d5;
+        }
+      }
+
+      html {
+        /* Remove touch delay: */
+        touch-action: manipulation;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--fg);
+      }
+
+      /* Allow canvas to fill entire web page: */
+      html,
+      body {
+        overflow: hidden;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: 100%;
+        width: 100%;
+        font-size: 16px;
+        font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+          "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+      }
+
+      nav {
+        width: 100%;
+        margin-top: 4px;
+        height: 30px;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+      }
+
+      h1 {
+        font-size: 1.2em;
+        margin: 0px;
+        padding: 0px;
+        color: var(--fg);
+      }
+
+      a.github {
+        position: absolute;
+        right: 24px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+      }
+
+      a {
+        color: #5077eb;
+        text-decoration: none;
+      }
+      a:visited {
+        color: #9352e1;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      a:active {
+        text-decoration: underline;
+      }
+
+      div.github-image {
+        background-image: url("assets/github-mark.svg");
+        background-size: contain;
+        width: 24px;
+        height: 24px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        div.github-image {
+          background-image: url("assets/github-mark-white.svg");
+        }
+      }
+
+      /* Make canvas fill entire document: */
+      canvas {
+        margin-right: auto;
+        margin-left: auto;
+        display: block;
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 100%;
+        height: calc(100% - 30px);
+        min-width: 500px;
+        min-height: 400px;
+      }
+
+      .centered {
+        margin-right: auto;
+        margin-left: auto;
+        display: block;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 24px;
+        font-family: Ubuntu-Light, Helvetica, sans-serif;
+        text-align: center;
+      }
+
+      /* ---------------------------------------------- */
+      /* Loading animation from https://loading.io/css/ */
+      .lds-dual-ring {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+      }
+
+      .lds-dual-ring:after {
+        content: " ";
+        display: block;
+        width: 24px;
+        height: 24px;
+        margin: 0px;
+        border-radius: 50%;
+        border: 3px solid var(--fg);
+        border-color: var(--fg) transparent var(--fg) transparent;
+        animation: lds-dual-ring 1.2s linear infinite;
+      }
+
+      @keyframes lds-dual-ring {
+        0% {
+          transform: rotate(0deg);
+        }
+
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  <link rel="modulepreload" href="/oklch-color-picker-6d7f13fd0b96d90.js" crossorigin=anonymous><link rel="preload" href="/oklch-color-picker-6d7f13fd0b96d90_bg.wasm" crossorigin=anonymous as="fetch" type="application/wasm"></head>
+
+  <body>
+    <nav>
+      <h1>Oklch Color Picker</h1>
+      <span>(Web Demo)</span>
+      <a
+        href="https://github.com/eero-lehtinen/oklch-color-picker"
+        class="github"
+      >
+        <span>View source</span>
+        <div class="github-image"></div>
+      </a>
+    </nav>
+    <!-- The WASM code will resize the canvas dynamically -->
+    <!-- the id is hardcoded in main.rs . so, make sure both match. -->
+    <canvas id="the_canvas_id"></canvas>
+
+    <!-- the loading spinner will be removed in main.rs -->
+    <div class="centered" id="loading_text">
+      <p style="font-size: 16px">Loading…</p>
+      <div class="lds-dual-ring"></div>
+    </div>
+
+    <!--Register Service Worker. this will cache the wasm / js scripts for offline use (for PWA functionality). -->
+    <!-- Force refresh (Ctrl + F5) to load the latest files instead of cached files  -->
+    <script>
+      // We disable caching during development so that we always view the latest version.
+      if ("serviceWorker" in navigator && window.location.hash !== "#dev") {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("sw.js");
+        });
+      }
+    </script>
+  </body>
+</html>
+
+<!-- Powered by egui: https://github.com/emilk/egui/ -->
