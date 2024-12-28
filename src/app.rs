@@ -23,7 +23,9 @@ fn setup_egui_config(ctx: &egui::Context) {
 
     fonts.font_data.insert(
         "my_font".to_owned(),
-        egui::FontData::from_static(include_bytes!("../src/Inter-Regular.ttf")),
+        Arc::new(egui::FontData::from_static(include_bytes!(
+            "../src/Inter-Regular.ttf"
+        ))),
     );
 
     fonts
