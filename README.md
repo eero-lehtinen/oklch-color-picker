@@ -6,6 +6,8 @@
 
 Try the web demo: https://oklch.eerolehtinen.fi/
 
+**NOTE:** This is an application, even though crates.io detects it as a library. The "library" part only exposes lua bindings for color parsing in Neovim.
+
 ## Features
 
 - Takes an input color as a cli argument and ouputs the edited color to stdout
