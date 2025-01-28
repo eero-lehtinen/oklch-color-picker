@@ -53,7 +53,7 @@
     <link
       data-trunk
       rel="copy-file"
-      href="assets/github-mark-white.svg"
+      href="assets/fullscreen.svg"
       data-target-path="assets"
     />
     <!-- <link -->
@@ -71,28 +71,12 @@
 
     <link rel="manifest" href="assets/manifest.json" />
     <!-- <link rel="apple-touch-icon" href="assets/icon_ios_touch_192.png" /> -->
-    <meta
-      name="theme-color"
-      media="(prefers-color-scheme: light)"
-      content="white"
-    />
-    <meta
-      name="theme-color"
-      media="(prefers-color-scheme: dark)"
-      content="#1a1a1a"
-    />
+    <meta name="theme-color" content="#1a1a1a" />
 
     <style>
       :root {
-        --bg: #f8f8f8;
-        --fg: #090909;
-      }
-
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --bg: #1a1a1a;
-          --fg: #d5d5d5;
-        }
+        --bg: #1a1a1a;
+        --fg: #d5d5d5;
       }
 
       html {
@@ -108,6 +92,7 @@
       /* Allow canvas to fill entire web page: */
       html,
       body {
+        position: relative;
         overflow: hidden;
         margin: 0 !important;
         padding: 0 !important;
@@ -120,8 +105,7 @@
 
       nav {
         width: 100%;
-        margin-top: 4px;
-        height: 30px;
+        height: 40px;
         display: flex;
         flex-direction: row;
         justify-content: center;
@@ -145,6 +129,45 @@
         gap: 8px;
       }
 
+      div.github-image {
+        background-image: url("assets/github-mark.svg");
+        background-size: contain;
+        width: 24px;
+        height: 24px;
+      }
+
+      button.fullscreen-button {
+        position: absolute;
+        padding: 4px;
+        left: 24px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        background: none;
+        color: #999999;
+        border: none;
+        border-radius: 4px;
+        font: inherit;
+        cursor: pointer;
+        outline: inherit;
+      }
+
+      button.fullscreen-button:hover {
+        background: #2c2c2c;
+      }
+
+      button.fullscreen-button:active {
+        background: #404040;
+      }
+
+      div.fullscreen-image {
+        background-image: url("assets/fullscreen.svg");
+        background-size: contain;
+        width: 24px;
+        height: 24px;
+      }
+
       a {
         color: #5077eb;
         text-decoration: none;
@@ -159,19 +182,6 @@
         text-decoration: underline;
       }
 
-      div.github-image {
-        background-image: url("assets/github-mark.svg");
-        background-size: contain;
-        width: 24px;
-        height: 24px;
-      }
-
-      @media (prefers-color-scheme: dark) {
-        div.github-image {
-          background-image: url("assets/github-mark-white.svg");
-        }
-      }
-
       /* Make canvas fill entire document: */
       canvas {
         margin-right: auto;
@@ -181,7 +191,7 @@
         bottom: 0;
         right: 0;
         width: 100%;
-        height: calc(100% - 30px);
+        height: calc(100% - 40px);
         min-width: 500px;
         min-height: 400px;
       }
@@ -233,8 +243,12 @@
 
   <body>
     <nav>
+      <!-- This didn't pan out, still looks horrible on mobile because of scaling issues -->
+      <!-- <button type="button" class="fullscreen-button" onclick="fullscreen()"> -->
+      <!--   <div class="fullscreen-image"></div> -->
+      <!--   <span>Fullscreen</span> -->
+      <!-- </button> -->
       <h1>Oklch Color Picker</h1>
-      <span>(Web Demo)</span>
       <a
         href="https://github.com/eero-lehtinen/oklch-color-picker"
         class="github"
@@ -251,6 +265,10 @@
     </div>
 
     <script>
+      function fullscreen() {
+        document.querySelector("#the_canvas_id").requestFullscreen();
+      }
+
       // We disable caching during development so that we always view the latest version.
       if ("serviceWorker" in navigator && window.location.hash !== "#dev") {
         window.addEventListener("load", function () {

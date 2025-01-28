@@ -43,7 +43,7 @@ fn setup_egui_config(ctx: &egui::Context) {
     ctx.set_fonts(fonts);
 
     // For some reason persistence breaks switching themes
-    ctx.set_theme(ctx.system_theme().unwrap_or(egui::Theme::Dark));
+    ctx.set_theme(egui::Theme::Dark);
 
     ctx.style_mut(|style| {
         style
@@ -626,8 +626,20 @@ impl eframe::App for App {
             self.first_frame = false;
         }
 
+        // Set only a minimal top margin in web
+        let margin = egui::Margin {
+            left: 20.,
+            right: 20.,
+            top: if cfg!(target_arch = "wasm32") {
+                10.
+            } else {
+                20.
+            },
+            bottom: 20.,
+        };
+
         let central_panel = egui::CentralPanel::default()
-            .frame(egui::Frame::central_panel(&ctx.style()).inner_margin(20.0));
+            .frame(egui::Frame::central_panel(&ctx.style()).inner_margin(margin));
 
         self.calculate_fallbacks();
 
