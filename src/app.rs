@@ -262,7 +262,7 @@ impl App {
         strip.cell(|ui| {
             canvas_picker(ui).show(ui, |ui| {
                 let (rect, response) =
-                    ui.allocate_exact_size(ui.available_size(), egui::Sense::drag());
+                    ui.allocate_exact_size(Vec2::new(512., 512.), egui::Sense::drag());
 
                 if let Some(pos) = response.interact_pointer_pos() {
                     self.color.lightness_r = map(pos.x, (rect.left(), rect.right()), (0., 1.));
