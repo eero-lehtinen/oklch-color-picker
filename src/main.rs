@@ -52,7 +52,9 @@ fn main() -> ExitCode {
 
     let native_options = eframe::NativeOptions {
         renderer: eframe::Renderer::Glow,
-        viewport: ViewportBuilder::default().with_min_inner_size(Vec2::new(500., 400.)),
+        viewport: ViewportBuilder::default()
+            .with_min_inner_size(Vec2::new(500., 400.))
+            .with_icon(load_icon()),
         ..Default::default()
     };
 
@@ -66,6 +68,19 @@ fn main() -> ExitCode {
     .unwrap();
 
     ExitCode::SUCCESS
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn load_icon() -> egui::IconData {
+    let icon = include_bytes!("../assets/icon.png");
+    let image = image::load_from_memory(icon).unwrap().into_rgba8();
+    let (width, height) = image.dimensions();
+    let rgba = image.into_raw();
+    egui::IconData {
+        rgba,
+        width,
+        height,
+    }
 }
 
 #[cfg(target_arch = "wasm32")]

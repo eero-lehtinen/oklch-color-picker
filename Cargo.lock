@@ -2483,6 +2483,7 @@ dependencies = [
  "egui_extras",
  "enum-map",
  "getrandom",
+ "image",
  "interprocess",
  "lexical-parse-float",
  "mlua",

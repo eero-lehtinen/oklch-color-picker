@@ -46,6 +46,7 @@ winnow = { version = "0.6.18", features = ["simd"] }
 interprocess = { version = "2.2.1", features = ["tokio"] }
 tokio = "1.40.0"
 mlua = { version = "0.10.0", features = ["module", "luajit"] }
+image = { version = "0.25.5", default-features = false, features = ["png"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = "0.4"
