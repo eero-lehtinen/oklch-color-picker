@@ -547,7 +547,7 @@ impl App {
 
             ui.horizontal(|ui| {
                 egui::ComboBox::from_id_salt("format")
-                    .width(180.)
+                    .width(160.)
                     .selected_text(self.format.to_string())
                     .height(500.)
                     .show_ui(ui, |ui| {
@@ -570,8 +570,11 @@ impl App {
 
             ui.add_space(5.);
 
+            let max_w = ui.available_size().x;
+            let max_h = ui.available_size().y;
+
             ui.style_mut().spacing.button_padding = egui::vec2(16.0, 8.0);
-            ui.horizontal_centered(|ui| {
+            ui.horizontal(|ui| {
                 let text = if cfg!(target_arch = "wasm32") {
                     "Copy to clipboard"
                 } else {
@@ -579,10 +582,8 @@ impl App {
                 };
 
                 let button = egui::Button::new(RichText::new(text).size(26.0))
-                    .min_size(Vec2::new(
-                        ui.available_size().x,
-                        ui.available_size().y * 0.9,
-                    ))
+                    .min_size(Vec2::new(max_w.min(400.), (max_h * 0.9).min(150.)))
+                    .wrap_mode(egui::TextWrapMode::Wrap)
                     .stroke(egui::Stroke::new(1.0, self.fallbacks.cur_egui));
                 let response = ui.add(button);
                 if response.clicked() {
@@ -661,9 +662,9 @@ impl eframe::App for App {
                     strip.cell(|_| {});
                     strip.strip(|builder| {
                         builder
-                            .size(Size::relative(2. / 3.))
-                            .size(Size::exact(10.))
                             .size(Size::remainder())
+                            .size(Size::exact(10.))
+                            .size(Size::relative(1. / 3.).at_most(500.))
                             .horizontal(|mut strip| {
                                 strip.cell(|ui| {
                                     self.update_color_previews(ui);
