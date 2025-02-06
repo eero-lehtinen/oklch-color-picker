@@ -506,7 +506,7 @@ impl App {
     fn update_color_previews(&mut self, ui: &mut egui::Ui) {
         canvas_final(ui).show(ui, |ui| {
             let (rect, _) = ui.allocate_exact_size(
-                Vec2::new(ui.available_width(), ui.available_height() / 1.8),
+                Vec2::new(ui.available_width(), ui.available_height() - 55.),
                 egui::Sense::drag(),
             );
             self.glow_paint(ui, ProgramKind::Final, rect.size());
@@ -582,7 +582,7 @@ impl App {
                 };
 
                 let button = egui::Button::new(RichText::new(text).size(26.0))
-                    .min_size(Vec2::new(max_w.min(400.), (max_h * 0.9).min(150.)))
+                    .min_size(Vec2::new(max_w, max_h))
                     .wrap_mode(egui::TextWrapMode::Wrap)
                     .stroke(egui::Stroke::new(1.0, self.fallbacks.cur_egui));
                 let response = ui.add(button);
@@ -650,7 +650,7 @@ impl eframe::App for App {
                 .size(Size::relative(0.01))
                 .size(Size::relative(0.20).at_least(120.))
                 .size(Size::relative(0.01))
-                .size(Size::relative(0.18).at_least(120.))
+                .size(Size::relative(0.18).at_least(110.))
                 .vertical(|mut strip| {
                     strip.strip(|builder| {
                         builder.sizes(Size::remainder(), 2).horizontal(|strip| {
