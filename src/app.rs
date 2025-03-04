@@ -60,11 +60,11 @@ fn setup_egui_config(ctx: &egui::Context) {
         style.spacing.button_padding = egui::vec2(8.0, 4.0);
         style.spacing.icon_width *= 1.8;
         style.spacing.icon_width_inner *= 1.8;
-        style.visuals.widgets.open.rounding = 4.0.into();
-        style.visuals.widgets.active.rounding = 4.0.into();
-        style.visuals.widgets.hovered.rounding = 4.0.into();
-        style.visuals.widgets.inactive.rounding = 4.0.into();
-        style.visuals.widgets.noninteractive.rounding = 4.0.into();
+        style.visuals.widgets.open.corner_radius = 4.0.into();
+        style.visuals.widgets.active.corner_radius = 4.0.into();
+        style.visuals.widgets.hovered.corner_radius = 4.0.into();
+        style.visuals.widgets.inactive.corner_radius = 4.0.into();
+        style.visuals.widgets.noninteractive.corner_radius = 4.0.into();
         style.visuals.widgets.inactive.bg_stroke =
             egui::Stroke::new(1.0, style.visuals.widgets.inactive.bg_fill);
     });
@@ -82,14 +82,14 @@ fn canvas_picker(ui: &mut egui::Ui) -> egui::Frame {
     egui::Frame::canvas(ui.style())
         .inner_margin(0.0)
         .outer_margin(egui::Margin {
-            bottom: 9.,
-            left: 9.,
-            right: 9.,
-            top: 0.,
+            bottom: 9,
+            left: 9,
+            right: 9,
+            top: 0,
         })
         .fill(MID_GRAY.into())
         .stroke(Stroke::new(7.0, MID_GRAY))
-        .rounding(0.)
+        .corner_radius(0.)
 }
 
 fn canvas_slider(ui: &mut egui::Ui) -> egui::Frame {
@@ -97,28 +97,28 @@ fn canvas_slider(ui: &mut egui::Ui) -> egui::Frame {
     egui::Frame::canvas(ui.style())
         .inner_margin(2.0)
         .outer_margin(egui::Margin {
-            left: 10.,
-            right: 14.,
-            bottom: h / 8.,
-            top: h / 8.,
+            left: 10,
+            right: 14,
+            bottom: (h / 8.) as i8,
+            top: (h / 8.) as i8,
         })
         .fill(MID_GRAY.into())
         .stroke(Stroke::new(2.0, MID_GRAY))
-        .rounding(0.)
+        .corner_radius(0.)
 }
 
 fn canvas_final(ui: &mut egui::Ui) -> egui::Frame {
     egui::Frame::canvas(ui.style())
         .inner_margin(4.0)
         .outer_margin(egui::Margin {
-            left: 3.,
-            right: 3.,
-            bottom: 12.,
-            top: 4.,
+            left: 3,
+            right: 3,
+            bottom: 12,
+            top: 4,
         })
         .fill(MID_GRAY.into())
         .stroke(Stroke::new(1.0, MID_GRAY))
-        .rounding(0.)
+        .corner_radius(0.)
 }
 
 pub struct App {
@@ -322,6 +322,7 @@ impl App {
                 4.,
                 slider_thumb_color,
                 Stroke::new(3.0, stroke_color),
+                egui::StrokeKind::Outside,
             );
         };
 
@@ -629,14 +630,10 @@ impl eframe::App for App {
 
         // Set only a minimal top margin in web
         let margin = egui::Margin {
-            left: 20.,
-            right: 20.,
-            top: if cfg!(target_arch = "wasm32") {
-                10.
-            } else {
-                20.
-            },
-            bottom: 20.,
+            left: 20,
+            right: 20,
+            top: if cfg!(target_arch = "wasm32") { 10 } else { 20 },
+            bottom: 20,
         };
 
         let central_panel = egui::CentralPanel::default()

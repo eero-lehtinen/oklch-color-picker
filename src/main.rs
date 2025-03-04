@@ -163,11 +163,11 @@ mod log_startup {
 }
 
 fn random_color() -> Oklcha {
-    let mut rng = SmallRng::from_entropy();
+    let mut rng = SmallRng::from_os_rng();
     Oklcha::new(
-        rng.gen_range(0.4..0.8),
-        rng.gen_range(0.05..0.2),
-        rng.gen_range(0.0..360.),
+        rng.random_range(0.4..0.8),
+        rng.random_range(0.05..0.2),
+        rng.random_range(0.0..360.),
         1.,
     )
 }

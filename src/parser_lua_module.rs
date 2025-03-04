@@ -40,7 +40,7 @@ mod lua {
         let srgb = Srgba::from(color);
         let [r, g, b] = srgb.to_u8_array_no_alpha();
 
-        Ok(Some((r as u32) << 16 | (g as u32) << 8 | b as u32))
+        Ok(Some(((r as u32) << 16) | ((g as u32) << 8) | b as u32))
     }
 
     #[mlua::lua_module(skip_memory_check)]

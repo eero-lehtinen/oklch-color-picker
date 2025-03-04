@@ -7,7 +7,7 @@ use winnow::{
     ascii::{digit0, digit1, space0, space1},
     combinator::{alt, delimited, opt, separated, terminated},
     error::ParserError,
-    PResult, Parser,
+    ModalResult, Parser,
 };
 
 #[derive(ValueEnum, Default, Clone, Copy, strum::Display, strum::EnumIter, PartialEq, Eq)]
@@ -241,14 +241,17 @@ pub fn parse_hex(hex: &str, allow_short: bool) -> Option<(Srgba, bool)> {
         3 if allow_short => {
             let [l, b] = u16::from_str_radix(hex, 16).ok()?.to_be_bytes();
             let (r, g, b) = (l & 0x0F, (b & 0xF0) >> 4, b & 0x0F);
-            (Srgba::rgb_u8(r << 4 | r, g << 4 | g, b << 4 | b), false)
+            (
+                Srgba::rgb_u8((r << 4) | r, (g << 4) | g, (b << 4) | b),
+                false,
+            )
         }
         // RGBA
         4 if allow_short => {
             let [l, b] = u16::from_str_radix(hex, 16).ok()?.to_be_bytes();
             let (r, g, b, a) = ((l & 0xF0) >> 4, l & 0xF, (b & 0xF0) >> 4, b & 0x0F);
             (
-                Srgba::rgba_u8(r << 4 | r, g << 4 | g, b << 4 | b, a << 4 | a),
+                Srgba::rgba_u8((r << 4) | r, (g << 4) | g, (b << 4) | b, (a << 4) | a),
                 true,
             )
         }
@@ -267,7 +270,7 @@ pub fn parse_hex(hex: &str, allow_short: bool) -> Option<(Srgba, bool)> {
     .into()
 }
 
-fn js_float_parser(input: &mut &str) -> PResult<f32> {
+fn js_float_parser(input: &mut &str) -> ModalResult<f32> {
     alt(((digit1, opt(('.', digit0))).void(), ('.', digit1).void()))
         .take()
         .try_map(|s: &str| {
@@ -281,7 +284,7 @@ fn js_float_parser(input: &mut &str) -> PResult<f32> {
 
 fn color_components_parser<C: ColorToComponents + Into<Color>>(
     input: &mut &str,
-) -> PResult<(Color, bool)> {
+) -> ModalResult<(Color, bool)> {
     separated(3..=4, js_float_parser, (space0, ',', space0))
         .map(|parts: Vec<f32>| {
             if parts.len() == 3 {
@@ -298,7 +301,7 @@ fn color_components_parser<C: ColorToComponents + Into<Color>>(
 
 fn color_components_u8_parser<C: ColorToPacked + Into<Color>>(
     input: &mut &str,
-) -> PResult<(Color, bool)> {
+) -> ModalResult<(Color, bool)> {
     separated(
         3..=4,
         digit1.try_map(|s: &str| s.parse::<u8>()),
@@ -358,13 +361,13 @@ impl CssPercentage {
     }
 }
 
-fn css_percentage_parser(input: &mut &str) -> PResult<CssPercentage> {
+fn css_percentage_parser(input: &mut &str) -> ModalResult<CssPercentage> {
     terminated(js_float_parser, "%")
         .map(CssPercentage)
         .parse_next(input)
 }
 
-fn css_legacy_num_parser(input: &mut &str) -> PResult<CssNum> {
+fn css_legacy_num_parser(input: &mut &str) -> ModalResult<CssNum> {
     (js_float_parser, opt("%"))
         .map(|(n, p)| {
             if p.is_some() {
@@ -376,11 +379,11 @@ fn css_legacy_num_parser(input: &mut &str) -> PResult<CssNum> {
         .parse_next(input)
 }
 
-fn css_num_parser(input: &mut &str) -> PResult<CssNum> {
+fn css_num_parser(input: &mut &str) -> ModalResult<CssNum> {
     alt((css_legacy_num_parser, "none".map(|_| CssNum::Num(0.)))).parse_next(input)
 }
 
-fn css_legacy_hue_parser(input: &mut &str) -> PResult<f32> {
+fn css_legacy_hue_parser(input: &mut &str) -> ModalResult<f32> {
     (js_float_parser, opt(alt(("deg", "rad", "grad", "turn"))))
         .map(|(n, unit)| {
             if let Some(unit) = unit {
@@ -399,11 +402,11 @@ fn css_legacy_hue_parser(input: &mut &str) -> PResult<f32> {
         .parse_next(input)
 }
 
-fn css_hue_parser(input: &mut &str) -> PResult<f32> {
+fn css_hue_parser(input: &mut &str) -> ModalResult<f32> {
     alt((css_legacy_hue_parser, "none".map(|_| 0.))).parse_next(input)
 }
 
-fn css_alpha_parser(input: &mut &str) -> PResult<f32> {
+fn css_alpha_parser(input: &mut &str) -> ModalResult<f32> {
     opt(delimited(
         (space0, '/', space0),
         css_num_parser.map(|n| n.apply()),
@@ -413,7 +416,7 @@ fn css_alpha_parser(input: &mut &str) -> PResult<f32> {
     .parse_next(input)
 }
 
-fn css_legacy_alpha_parser(input: &mut &str) -> PResult<f32> {
+fn css_legacy_alpha_parser(input: &mut &str) -> ModalResult<f32> {
     opt(delimited(
         (space0, ',', space0),
         css_legacy_num_parser.map(|n| n.apply()),
@@ -438,7 +441,7 @@ where
     )
 }
 
-fn oklch_parser(input: &mut &str) -> PResult<Oklcha> {
+fn oklch_parser(input: &mut &str) -> ModalResult<Oklcha> {
     color_read_parser(
         "oklch".void(),
         (
@@ -451,7 +454,7 @@ fn oklch_parser(input: &mut &str) -> PResult<Oklcha> {
     .parse_next(input)
 }
 
-fn rgb_parser(input: &mut &str) -> PResult<Srgba> {
+fn rgb_parser(input: &mut &str) -> ModalResult<Srgba> {
     color_read_parser(
         "rgb".void(),
         (
@@ -464,7 +467,7 @@ fn rgb_parser(input: &mut &str) -> PResult<Srgba> {
     .parse_next(input)
 }
 
-fn hsl_parser(input: &mut &str) -> PResult<Hsla> {
+fn hsl_parser(input: &mut &str) -> ModalResult<Hsla> {
     color_read_parser(
         "hsl".void(),
         (
@@ -477,7 +480,7 @@ fn hsl_parser(input: &mut &str) -> PResult<Hsla> {
     .parse_next(input)
 }
 
-fn rgb_legacy_parser(input: &mut &str) -> PResult<Srgba> {
+fn rgb_legacy_parser(input: &mut &str) -> ModalResult<Srgba> {
     color_read_parser(
         ("rgb", opt('a')).void(),
         (
@@ -501,7 +504,7 @@ fn rgb_legacy_parser(input: &mut &str) -> PResult<Srgba> {
     .parse_next(input)
 }
 
-fn hsl_legacy_parser(input: &mut &str) -> PResult<Hsla> {
+fn hsl_legacy_parser(input: &mut &str) -> ModalResult<Hsla> {
     color_read_parser(
         ("hsl", opt('a')).void(),
         (
