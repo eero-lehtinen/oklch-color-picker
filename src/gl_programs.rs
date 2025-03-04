@@ -20,6 +20,7 @@ pub enum ProgramKind {
 pub struct GlowProgram {
     kind: ProgramKind,
     program: glow::Program,
+    vertex_array: glow::VertexArray,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -115,13 +116,22 @@ impl GlowProgram {
                 gl.delete_shader(shader);
             }
 
-            Self { kind, program }
+            let vertex_array = gl
+                .create_vertex_array()
+                .expect("Cannot create vertex array");
+
+            Self {
+                kind,
+                program,
+                vertex_array,
+            }
         }
     }
 
     pub fn destroy(&self, gl: &glow::Context) {
         unsafe {
             gl.delete_program(self.program);
+            gl.delete_vertex_array(self.vertex_array);
         }
     }
 
@@ -172,6 +182,7 @@ impl GlowProgram {
                     );
                 }
             }
+            gl.bind_vertex_array(Some(self.vertex_array));
             gl.draw_arrays(glow::TRIANGLE_STRIP, 0, 4);
         }
     }
