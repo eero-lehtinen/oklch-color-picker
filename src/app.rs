@@ -473,8 +473,8 @@ impl App {
     }
 
     fn update_color_edit(&mut self, ui: &mut egui::Ui, prev: bool, fallback: LinearRgba, id: u8) {
-        let mut text = if let Some(text) = self.input_text.get(&id) {
-            if let Some((c, use_alpha)) = parse_color(text, self.format) {
+        let mut text = if let Some(text) = self.input_text.remove(&id) {
+            if let Some((c, use_alpha)) = parse_color(&text, self.format) {
                 self.use_alpha = use_alpha;
                 let color = if prev {
                     &mut self.prev_color
@@ -487,7 +487,7 @@ impl App {
                     egui::Stroke::new(2.0, egui::Color32::from_hex("#ce3c47").unwrap());
             }
 
-            text.clone()
+            text
         } else {
             format_color(fallback, self.format, self.use_alpha)
         };
@@ -499,8 +499,6 @@ impl App {
 
         if output.response.has_focus() {
             self.input_text.insert(id, text.clone());
-        } else {
-            self.input_text.remove(&id);
         }
     }
 
