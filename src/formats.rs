@@ -16,9 +16,11 @@ use winnow::{
 pub enum ColorFormat {
     #[default]
     Hex,
-    Rgb,
     Oklch,
+    Rgb,
     Hsl,
+    RgbLegacy,
+    HslLegacy,
     HexLiteral,
     RawRgb,
     RawRgbFloat,
@@ -31,7 +33,15 @@ impl ColorFormat {
         use ColorFormat as F;
         matches!(
             *self,
-            F::Hex | F::Rgb | F::Oklch | F::Hsl | F::HexLiteral | F::RawRgb | F::RawRgbFloat
+            F::Hex
+                | F::Oklch
+                | F::Rgb
+                | F::Hsl
+                | F::RgbLegacy
+                | F::HslLegacy
+                | F::HexLiteral
+                | F::RawRgb
+                | F::RawRgbFloat
         )
     }
 
@@ -65,9 +75,17 @@ fn css_alpha(alpha: f32) -> String {
     }
 }
 
+fn css_legacy_alpha(alpha: f32) -> String {
+    if alpha < 1. {
+        format!(", {}%", num(alpha * 100., 1))
+    } else {
+        String::new()
+    }
+}
+
 fn raw_alpha(alpha: f32, use_alpha: bool) -> String {
     if use_alpha {
-        format!(", {:?}", num(alpha, 4))
+        format!(", {:?}", num(alpha, 3))
     } else {
         String::new()
     }
@@ -98,6 +116,16 @@ pub fn format_color(fallback: LinearRgba, format: ColorFormat, use_alpha: bool) 
                 _ => format!("#{:02x}{:02x}{:02x}{:02x}", r, g, b, a),
             }
         }
+        ColorFormat::Oklch => {
+            let c = Oklcha::from(fallback);
+            format!(
+                "oklch({}% {} {}{})",
+                num(c.lightness * 100., 1),
+                num(c.chroma, 4),
+                num(c.hue, 1),
+                css_alpha(c.alpha)
+            )
+        }
         ColorFormat::Rgb => {
             let c = Srgba::from(fallback).to_u8_array_no_alpha();
             format!(
@@ -108,24 +136,34 @@ pub fn format_color(fallback: LinearRgba, format: ColorFormat, use_alpha: bool) 
                 css_alpha(fallback.alpha)
             )
         }
-        ColorFormat::Oklch => {
-            let c = Oklcha::from(fallback);
+        ColorFormat::RgbLegacy => {
+            let c = Srgba::from(fallback).to_u8_array_no_alpha();
             format!(
-                "oklch({} {} {}{})",
-                num(c.lightness, 4),
-                num(c.chroma, 4),
-                num(c.hue, 2),
-                css_alpha(c.alpha)
+                "rgb({}, {}, {}{})",
+                c[0],
+                c[1],
+                c[2],
+                css_legacy_alpha(fallback.alpha)
             )
         }
         ColorFormat::Hsl => {
             let c = Hsla::from(fallback);
             format!(
-                "hsl({} {} {}{})",
-                num(c.hue, 2),
-                num(c.saturation, 4),
-                num(c.lightness, 4),
+                "hsl({} {}% {}%{})",
+                num(c.hue, 1),
+                num(c.saturation * 100., 1),
+                num(c.lightness * 100., 1),
                 css_alpha(c.alpha)
+            )
+        }
+        ColorFormat::HslLegacy => {
+            let c = Hsla::from(fallback);
+            format!(
+                "hsl({}, {}%, {}%{})",
+                num(c.hue, 1),
+                num(c.saturation * 100., 1),
+                num(c.lightness * 100., 1),
+                css_legacy_alpha(c.alpha)
             )
         }
         ColorFormat::HexLiteral => {
@@ -207,16 +245,10 @@ fn parse_color_impl(s: &str, input_format: ColorFormat) -> Option<(Color, bool)>
     match input_format {
         ColorFormat::Hex => parse_hex(s.strip_prefix("#")?, true).map(|(c, _)| (c.into(), true)),
         ColorFormat::Oklch => oklch_parser.parse(s).ok().map(|c| (c.into(), true)),
-        ColorFormat::Rgb => rgb_parser
-            .parse(s)
-            .or_else(|_| rgb_legacy_parser.parse(s))
-            .ok()
-            .map(|c| (c.into(), true)),
-        ColorFormat::Hsl => hsl_parser
-            .parse(s)
-            .or_else(|_| hsl_legacy_parser.parse(s))
-            .ok()
-            .map(|c| (c.into(), true)),
+        ColorFormat::Rgb => rgb_parser.parse(s).ok().map(|c| (c.into(), true)),
+        ColorFormat::Hsl => hsl_parser.parse(s).ok().map(|c| (c.into(), true)),
+        ColorFormat::RgbLegacy => rgb_legacy_parser.parse(s).ok().map(|c| (c.into(), true)),
+        ColorFormat::HslLegacy => hsl_legacy_parser.parse(s).ok().map(|c| (c.into(), true)),
         ColorFormat::HexLiteral => parse_hex(s.strip_prefix("0x")?, false)
             .map(|(c, has_alpha)| {
                 let mut parts = c.to_f32_array();
