@@ -165,6 +165,12 @@
         text-align: center;
       }
 
+      @media (max-width: 600px) {
+        .hide-small {
+          display: none;
+        }
+      }
+
       /* ---------------------------------------------- */
       /* Loading animation from https://loading.io/css/ */
       .lds-dual-ring {
@@ -209,7 +215,7 @@
         href="https://github.com/eero-lehtinen/oklch-color-picker"
         class="github"
       >
-        <span>View source</span>
+        <span class="hide-small">View source</span>
         <div class="github-image"></div>
       </a>
     </nav>
