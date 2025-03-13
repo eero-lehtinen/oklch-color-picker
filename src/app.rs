@@ -587,10 +587,23 @@ impl App {
         let max_w = ui.available_size().x;
         let max_h = ui.available_size().y;
 
-        let (pad, font_size) = if cfg!(target_arch = "wasm32") && max_w < 180. {
-            (egui::vec2(6.0, 2.0), 18.)
+        let (pad, font_size) = if cfg!(target_arch = "wasm32") {
+            if max_w < 180. || max_h < 65. {
+                (egui::vec2(6.0, 2.0), 18.)
+            } else {
+                (egui::vec2(16.0, 8.0), 26.)
+            }
         } else {
-            (egui::vec2(16.0, 8.0), 26.)
+            (
+                egui::vec2(16.0, 8.0),
+                if max_w > 400. && max_h > 120. {
+                    42.
+                } else if max_w > 250. && max_h > 90. {
+                    34.
+                } else {
+                    26.
+                },
+            )
         };
         ui.style_mut().spacing.button_padding = pad;
 
