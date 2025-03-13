@@ -113,7 +113,7 @@ fn canvas_final(ui: &mut egui::Ui) -> egui::Frame {
         .outer_margin(egui::Margin {
             left: 3,
             right: 3,
-            bottom: 12,
+            bottom: 10,
             top: 4,
         })
         .fill(MID_GRAY.into())
@@ -494,127 +494,135 @@ impl App {
 
         let output = egui::TextEdit::singleline(&mut text)
             .margin(6.0)
-            .min_size(Vec2::new(ui.available_width(), 0.))
+            .desired_width(f32::INFINITY)
             .show(ui);
-
         if output.response.has_focus() {
             self.input_text.insert(id, text.clone());
         }
     }
 
-    fn update_color_previews(&mut self, ui: &mut egui::Ui) {
-        canvas_final(ui).show(ui, |ui| {
-            let (rect, _) = ui.allocate_exact_size(
-                Vec2::new(ui.available_width(), ui.available_height() - 55.),
-                egui::Sense::drag(),
-            );
-            self.glow_paint(ui, ProgramKind::Final, rect.size());
-        });
+    fn update_color_previews(&mut self, builder: StripBuilder) {
+        builder
+            .size(Size::remainder())
+            .size(Size::exact(54.))
+            .vertical(|mut strip| {
+                strip.cell(|ui| {
+                    canvas_final(ui).show(ui, |ui| {
+                        let (rect, _) = ui.allocate_exact_size(
+                            Vec2::new(ui.available_width(), ui.available_height()),
+                            egui::Sense::drag(),
+                        );
+                        self.glow_paint(ui, ProgramKind::Final, rect.size());
+                    });
+                });
 
-        ui.add_space(2.);
-        ui.columns(2, |ui| {
-            self.update_color_edit(&mut ui[0], true, self.fallbacks.prev, 0);
-            let color_label = |text: &str, fallback: bool| {
-                egui::Label::new(format!(
-                    "{text}{}",
-                    if fallback { " (fallback)" } else { "" }
-                ))
-                .wrap_mode(egui::TextWrapMode::Truncate)
-            };
+                strip.strip(|builder| {
+                    builder
+                        .sizes(Size::remainder(), 2)
+                        .clip(true)
+                        .horizontal(|mut strip| {
+                            let color_label = |text: &str, fallback: bool| {
+                                egui::Label::new(format!(
+                                    "{text}{}",
+                                    if fallback { " (fallback)" } else { "" }
+                                ))
+                                .wrap_mode(egui::TextWrapMode::Truncate)
+                            };
 
-            ui[0].horizontal(|ui| {
-                color_label("Previous Color", self.fallbacks.is_prev_fallback).ui(ui);
+                            strip.cell(|ui| {
+                                self.update_color_edit(ui, true, self.fallbacks.prev, 0);
+                                color_label("Previous Color", self.fallbacks.is_prev_fallback)
+                                    .ui(ui);
+                            });
+
+                            strip.cell(|ui| {
+                                self.update_color_edit(ui, false, self.fallbacks.cur, 1);
+                                color_label("New Color", self.fallbacks.is_cur_fallback).ui(ui);
+                            });
+                        });
+                });
             });
-
-            self.update_color_edit(&mut ui[1], false, self.fallbacks.cur, 1);
-            ui[1].horizontal(|ui| {
-                color_label("New Color", self.fallbacks.is_cur_fallback).ui(ui);
-            });
-        });
     }
 
     fn update_button_area(&mut self, ui: &mut egui::Ui) {
         ui.add_space(4.0);
-        ui.vertical_centered(|ui| {
-            let style = ui.style_mut();
-            style
-                .text_styles
-                .get_mut(&egui::TextStyle::Button)
-                .unwrap()
-                .size = 18.;
-            style.spacing.button_padding = egui::vec2(4.0, 3.0);
+        let style = ui.style_mut();
+        style
+            .text_styles
+            .get_mut(&egui::TextStyle::Button)
+            .unwrap()
+            .size = 18.;
+        style.spacing.button_padding = egui::vec2(4.0, 3.0);
 
-            ui.horizontal(|ui| {
-                egui::ComboBox::from_id_salt("format")
-                    .width(185.)
-                    .selected_text(self.format.to_string())
-                    .height(500.)
-                    .show_ui(ui, |ui| {
-                        for format in ColorFormat::iter() {
-                            ui.selectable_value(&mut self.format, format, format.to_string());
-                        }
-                    });
-                if self.format.needs_explicit_alpha()
-                    && ui
-                        .add(egui::Checkbox::new(
-                            &mut self.use_alpha,
-                            RichText::new("Alpha"),
-                        ))
-                        .clicked()
-                    && !self.use_alpha
-                {
-                    self.color.alpha = 1.;
+        egui::ComboBox::from_id_salt("format")
+            .width(185.)
+            .selected_text(self.format.to_string())
+            .height(500.)
+            .show_ui(ui, |ui| {
+                for format in ColorFormat::iter() {
+                    ui.selectable_value(&mut self.format, format, format.to_string());
                 }
             });
+        if self.format.needs_explicit_alpha() {
+            ui.add_space(2.);
+            if ui
+                .add(egui::Checkbox::new(
+                    &mut self.use_alpha,
+                    RichText::new("Alpha"),
+                ))
+                .clicked()
+                && !self.use_alpha
+            {
+                self.color.alpha = 1.;
+            }
+        }
 
-            ui.add_space(5.);
+        ui.add_space(5.);
+        let max_w = ui.available_size().x;
+        let max_h = ui.available_size().y;
 
-            let max_w = ui.available_size().x;
-            let max_h = ui.available_size().y;
+        ui.style_mut().spacing.button_padding = egui::vec2(16.0, 8.0);
+        let text = if cfg!(target_arch = "wasm32") {
+            "Copy to clipboard"
+        } else {
+            "DONE"
+        };
 
-            ui.style_mut().spacing.button_padding = egui::vec2(16.0, 8.0);
-            ui.horizontal(|ui| {
-                let text = if cfg!(target_arch = "wasm32") {
-                    "Copy to clipboard"
+        ui.centered_and_justified(|ui| {
+            let button = egui::Button::new(RichText::new(text).size(26.0))
+                .min_size(Vec2::new(max_w, max_h))
+                .wrap_mode(egui::TextWrapMode::Wrap)
+                .stroke(egui::Stroke::new(1.0, self.fallbacks.cur_egui));
+            let response = ui.add(button);
+            if response.clicked() {
+                println!(
+                    "{}",
+                    format_color(self.fallbacks.cur, self.format, self.use_alpha)
+                );
+                if cfg!(target_arch = "wasm32") {
+                    ui.ctx().copy_text(format_color(
+                        self.fallbacks.cur,
+                        self.format,
+                        self.use_alpha,
+                    ));
+                    self.copied_notice = Some(Instant::now());
                 } else {
-                    "DONE"
-                };
-
-                let button = egui::Button::new(RichText::new(text).size(26.0))
-                    .min_size(Vec2::new(max_w, max_h))
-                    .wrap_mode(egui::TextWrapMode::Wrap)
-                    .stroke(egui::Stroke::new(1.0, self.fallbacks.cur_egui));
-                let response = ui.add(button);
-                if response.clicked() {
-                    println!(
-                        "{}",
-                        format_color(self.fallbacks.cur, self.format, self.use_alpha)
-                    );
-                    if cfg!(target_arch = "wasm32") {
-                        ui.ctx().copy_text(format_color(
-                            self.fallbacks.cur,
-                            self.format,
-                            self.use_alpha,
-                        ));
-                        self.copied_notice = Some(Instant::now());
-                    } else {
-                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close)
-                    }
+                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close)
                 }
-                if self
-                    .copied_notice
-                    .is_some_and(|i| i.elapsed() < Duration::from_millis(400))
-                {
-                    egui::show_tooltip_at_pointer(
-                        ui.ctx(),
-                        ui.layer_id(),
-                        egui::Id::new("copied_tooltip"),
-                        |ui| {
-                            ui.label("Copied!");
-                        },
-                    );
-                }
-            });
+            }
+            if self
+                .copied_notice
+                .is_some_and(|i| i.elapsed() < Duration::from_millis(400))
+            {
+                egui::show_tooltip_at_pointer(
+                    ui.ctx(),
+                    ui.layer_id(),
+                    egui::Id::new("copied_tooltip"),
+                    |ui| {
+                        ui.label("Copied!");
+                    },
+                );
+            }
         });
     }
 }
@@ -657,12 +665,12 @@ impl eframe::App for App {
                     strip.cell(|_| {});
                     strip.strip(|builder| {
                         builder
-                            .size(Size::remainder())
+                            .size(Size::relative(2. / 3.))
                             .size(Size::exact(10.))
-                            .size(Size::relative(1. / 3.).at_most(500.))
+                            .size(Size::remainder())
                             .horizontal(|mut strip| {
-                                strip.cell(|ui| {
-                                    self.update_color_previews(ui);
+                                strip.strip(|builder| {
+                                    self.update_color_previews(builder);
                                 });
                                 strip.cell(|_| {});
                                 strip.cell(|ui| {
