@@ -152,7 +152,12 @@ impl App {
         let gl = cc.gl.as_ref().unwrap();
 
         let programs = ProgramKind::iter()
-            .map(|kind| (kind, Arc::new(Mutex::new(GlowProgram::new(gl, kind)))))
+            .map(|kind| {
+                (
+                    kind,
+                    Arc::new(Mutex::new(GlowProgram::new(gl, &cc.egui_ctx, kind))),
+                )
+            })
             .collect();
 
         log_startup::log("Gl programs created");

@@ -21,6 +21,7 @@ pub struct GlowProgram {
     kind: ProgramKind,
     program: glow::Program,
     vertex_array: glow::VertexArray,
+    supersample: u32,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -38,7 +39,7 @@ macro_rules! shader_version {
 }
 
 impl GlowProgram {
-    pub fn new(gl: &glow::Context, kind: ProgramKind) -> Self {
+    pub fn new(gl: &glow::Context, egui_ctx: &egui::Context, kind: ProgramKind) -> Self {
         unsafe {
             let program = gl.create_program().unwrap();
             let vert_shader_source =
@@ -120,10 +121,18 @@ impl GlowProgram {
                 .create_vertex_array()
                 .expect("Cannot create vertex array");
 
+            // Don't supersample if resolution is already massive (often on web mobile)
+            let supersample = if egui_ctx.native_pixels_per_point().is_some_and(|p| p > 2.1) {
+                0
+            } else {
+                1
+            };
+
             Self {
                 kind,
                 program,
                 vertex_array,
+                supersample,
             }
         }
     }
@@ -149,7 +158,8 @@ impl GlowProgram {
                 gl.uniform_1_f32(uni_loc(name).as_ref(), value);
             };
             gl.use_program(Some(self.program));
-            gl.uniform_1_u32(uni_loc("supersample").as_ref(), 1);
+
+            gl.uniform_1_u32(uni_loc("supersample").as_ref(), self.supersample);
             gl.uniform_2_f32(uni_loc("size").as_ref(), size.x, size.y);
             match self.kind {
                 ProgramKind::Picker => {
