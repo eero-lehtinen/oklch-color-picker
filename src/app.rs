@@ -555,7 +555,8 @@ impl App {
         style.spacing.button_padding = egui::vec2(4.0, 3.0);
 
         egui::ComboBox::from_id_salt("format")
-            .width(185.)
+            .width(ui.available_width().min(190.))
+            .truncate()
             .selected_text(self.format.to_string())
             .height(500.)
             .show_ui(ui, |ui| {
@@ -581,7 +582,13 @@ impl App {
         let max_w = ui.available_size().x;
         let max_h = ui.available_size().y;
 
-        ui.style_mut().spacing.button_padding = egui::vec2(16.0, 8.0);
+        let (pad, font_size) = if cfg!(target_arch = "wasm32") && max_w < 180. {
+            (egui::vec2(6.0, 2.0), 18.)
+        } else {
+            (egui::vec2(16.0, 8.0), 26.)
+        };
+        ui.style_mut().spacing.button_padding = pad;
+
         let text = if cfg!(target_arch = "wasm32") {
             "Copy to clipboard"
         } else {
@@ -589,7 +596,7 @@ impl App {
         };
 
         ui.centered_and_justified(|ui| {
-            let button = egui::Button::new(RichText::new(text).size(26.0))
+            let button = egui::Button::new(RichText::new(text).size(font_size))
                 .min_size(Vec2::new(max_w, max_h))
                 .wrap_mode(egui::TextWrapMode::Wrap)
                 .stroke(egui::Stroke::new(1.0, self.fallbacks.cur_egui));
