@@ -1,6 +1,6 @@
 [package]
 name = "oklch-color-picker"
-version = "2.0.0"
+version = "2.1.0"
 edition = "2021"
 license = "MIT"
 description = "A standalone graphical color picker using the Oklch color space. Allows output to hex, rgb, hsl and many other formats."
