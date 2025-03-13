@@ -24,7 +24,7 @@ fn setup_egui_config(ctx: &egui::Context) {
     fonts.font_data.insert(
         "my_font".to_owned(),
         Arc::new(egui::FontData::from_static(include_bytes!(
-            "../src/Inter-Regular.ttf"
+            "../src/IBMPlexMono-Regular.ttf"
         ))),
     );
 
@@ -238,7 +238,7 @@ impl App {
                     if !name.is_empty() {
                         let label_center = Pos2::new(pos, rect.bottom() + 5.);
                         let label_rect =
-                            egui::Rect::from_center_size(label_center, egui::vec2(16.0, 10.0));
+                            egui::Rect::from_center_size(label_center, egui::vec2(20.0, 10.0));
                         labels.push((label_rect, name.into()));
                     }
                 } else {
@@ -251,7 +251,7 @@ impl App {
                     ));
 
                     if !name.is_empty() {
-                        let label_center = Pos2::new(rect.left() - 10., pos - 4.);
+                        let label_center = Pos2::new(rect.left() - 10., pos - 6.);
                         let label_rect =
                             egui::Rect::from_center_size(label_center, egui::vec2(10.0, 10.0));
                         labels.push((label_rect, name.into()));
@@ -326,7 +326,7 @@ impl App {
             );
         };
 
-        let input_size = Vec2::new(66., 26.);
+        let input_size = Vec2::new(68., 26.);
         let show_label = |ui: &mut egui::Ui, label: &str| {
             let label = egui::Label::new(label);
             ui.add_sized(Vec2::new(12., 26.), label);
@@ -546,7 +546,7 @@ impl App {
 
             ui.horizontal(|ui| {
                 egui::ComboBox::from_id_salt("format")
-                    .width(160.)
+                    .width(185.)
                     .selected_text(self.format.to_string())
                     .height(500.)
                     .show_ui(ui, |ui| {
