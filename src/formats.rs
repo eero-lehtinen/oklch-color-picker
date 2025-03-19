@@ -681,20 +681,20 @@ mod tests {
     #[test]
     fn rgb_legacy() {
         assert_eq!(
-            parse_color("rgba(255, 255, 255, 0.5)", ColorFormat::Rgb).unwrap(),
+            parse_color("rgba(255, 255, 255, 0.5)", ColorFormat::RgbLegacy).unwrap(),
             (Srgba::new(1., 1., 1., 0.5).into(), true)
         );
     }
 
     #[test]
     fn fail_rgb_legacy_mixed_units() {
-        assert_eq!(parse_color("rgb(1.0%, 1, 1)", ColorFormat::Rgb), None);
+        assert_eq!(parse_color("rgb(1.0%, 1, 1)", ColorFormat::RgbLegacy), None);
     }
 
     #[test]
     fn hsl_legacy() {
         assert_eq!(
-            parse_color("hsla(50, 10%, 10%, 0.5)", ColorFormat::Hsl).unwrap(),
+            parse_color("hsla(50, 10%, 10%, 0.5)", ColorFormat::HslLegacy).unwrap(),
             (Hsla::new(50., 0.1, 0.1, 0.5).into(), true)
         );
     }
