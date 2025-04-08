@@ -44,7 +44,7 @@ winnow = { version = "0.7.3", features = ["simd"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 interprocess = { version = "2.2.1", features = ["tokio"] }
-tokio = "1.40.0"
+tokio = "1.43.1"
 mlua = { version = "0.10.0", features = ["module", "luajit"] }
 image = { version = "0.25.5", default-features = false, features = ["png"] }
 
