@@ -96,6 +96,13 @@
         padding: 0px 46px;
       }
 
+      div.title {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+      }
+
       h1 {
         font-size: 1.3rem;
         font-weight: 600;
@@ -267,7 +274,10 @@
           <div class="fullscreen-image"></div>
           <span>Zoom</span>
         </button>
-        <h1>Oklch Color Picker</h1>
+        <div class="title">
+          <img src="assets/web-app-manifest-192x192.png" width="22" height="22" alt="Oklch Color Picker" />
+          <h1>Oklch Color Picker</h1>
+        </div>
         <a
           href="https://github.com/eero-lehtinen/oklch-color-picker"
           class="github"
