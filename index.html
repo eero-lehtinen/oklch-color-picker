@@ -34,6 +34,8 @@
     <meta name="theme-color" content="#1a1a1a" />
 
     <style>
+      @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&display=swap');
+
       * {
         box-sizing: border-box;
       }
@@ -41,11 +43,20 @@
         --bg: #1b1b1b;
         --bg-darker: #0e0e0e;
         --fg: #d5d5d5;
+
+        font-size: 16px;
+
+        font-family: "IBM Plex Sans", sans-serif;
+        font-optical-sizing: auto;
+        font-style: normal;
+        font-variation-settings:
+          "wdth" 100;
       }
 
       html {
         /* Remove touch delay: */
         touch-action: manipulation;
+
       }
 
       body {
@@ -64,9 +75,6 @@
         padding: 0 !important;
         height: 100%;
         width: 100%;
-        font-size: 16px;
-        font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
-          "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
       }
 
       nav {
@@ -89,7 +97,8 @@
       }
 
       h1 {
-        font-size: 1.2em;
+        font-size: 1.3rem;
+        font-weight: 600;
         margin: 0px;
         padding: 0px;
         color: var(--fg);
