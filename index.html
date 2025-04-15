@@ -30,11 +30,16 @@
     <link rel="manifest" href="assets/manifest.json" />
 
     <link data-trunk rel="copy-file" href="assets/github-mark.svg" data-target-path="assets"/>
+    <link data-trunk rel="copy-file" href="assets/fullscreen.svg" data-target-path="assets"/>
     <meta name="theme-color" content="#1a1a1a" />
 
     <style>
+      * {
+        box-sizing: border-box;
+      }
       :root {
-        --bg: #1a1a1a;
+        --bg: #1b1b1b;
+        --bg-darker: #0e0e0e;
         --fg: #d5d5d5;
       }
 
@@ -44,8 +49,10 @@
       }
 
       body {
-        background: var(--bg);
+        background: var(--bg-darker);
         color: var(--fg);
+        display: flex;
+        flex-direction: column;
       }
 
       /* Allow canvas to fill entire web page: */
@@ -64,12 +71,21 @@
 
       nav {
         width: 100%;
-        height: 40px;
+        height: 48px;
+        min-height: 48px;
+      }
+
+      nav > div {
+        height: 100%;
+        width: 100%;
+        max-width: 1280px;
+        margin: auto;
         display: flex;
         flex-direction: row;
-        justify-content: center;
+        justify-content: space-between;
         align-items: center;
         gap: 8px;
+        padding: 0px 46px;
       }
 
       h1 {
@@ -80,7 +96,6 @@
       }
 
       a.github {
-        position: absolute;
         right: 24px;
         display: flex;
         flex-direction: row;
@@ -91,17 +106,18 @@
       div.github-image {
         background-image: url("assets/github-mark.svg");
         background-size: contain;
+        opacity: 0.8;
         width: 24px;
         height: 24px;
       }
 
       button.fullscreen-button {
-        position: absolute;
-        padding: 4px;
+        padding: 6px;
         left: 24px;
         display: flex;
         flex-direction: row;
         align-items: center;
+        justify-content: center;
         gap: 8px;
         background: none;
         color: #999999;
@@ -113,16 +129,17 @@
       }
 
       button.fullscreen-button:hover {
-        background: #2c2c2c;
+        background: #212121;
       }
 
       button.fullscreen-button:active {
-        background: #404040;
+        background: #3b3b3b;
       }
 
       div.fullscreen-image {
         background-image: url("assets/fullscreen.svg");
         background-size: contain;
+        opacity: 0.8;
         width: 24px;
         height: 24px;
       }
@@ -141,17 +158,47 @@
         text-decoration: underline;
       }
 
-      /* Make canvas fill entire document: */
-      canvas {
-        margin-right: auto;
-        margin-left: auto;
-        display: block;
-        position: absolute;
-        bottom: 0;
-        right: 0;
-        width: 100%;
-        height: calc(100% - 40px);
+      div.canvas-wrapper {
+        min-width: 0;
+        min-height: 0;
+        flex-grow: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
       }
+
+      div.canvas-wrapper2 {
+        width: 100%;
+        height: 100%;
+        background-color: var(--bg);
+      }
+      @media (min-width: 1000px) {
+        div.canvas-wrapper2.small {
+          max-width: 1300px;
+          max-height: 900px;
+          padding: 30px 20px 20px;
+          border-radius: 10px;
+        }
+      }
+      @media (min-width: 2000px) {
+        div.canvas-wrapper2.small {
+          max-width: 1560px;
+          max-height: 1080px;
+        }
+      }
+
+      @media (max-width: 999px) {
+        button.fullscreen-button {
+          max-width: 0px;
+          visibility: hidden;
+        }
+      }
+
+      canvas {
+        width: 100%;
+        height: 100%;
+      }
+
 
       .centered {
         margin-right: auto;
@@ -206,30 +253,49 @@
 
   <body>
     <nav>
-      <!-- This didn't pan out, still looks horrible on mobile because of scaling issues -->
-      <!-- <button type="button" class="fullscreen-button" onclick="fullscreen()"> -->
-      <!--   <div class="fullscreen-image"></div> -->
-      <!--   <span>Fullscreen</span> -->
-      <!-- </button> -->
-      <h1>Oklch Color Picker</h1>
-      <a
-        href="https://github.com/eero-lehtinen/oklch-color-picker"
-        class="github"
-      >
-        <span class="hide-small">View source</span>
-        <div class="github-image"></div>
-      </a>
+      <div>
+        <button type="button" class="fullscreen-button" onclick="toggleZoom()">
+          <div class="fullscreen-image"></div>
+          <span>Zoom</span>
+        </button>
+        <h1>Oklch Color Picker</h1>
+        <a
+          href="https://github.com/eero-lehtinen/oklch-color-picker"
+          class="github"
+          >
+          <span class="hide-small">View source</span>
+          <div class="github-image"></div>
+        </a>
+      </div>
     </nav>
-    <canvas id="the_canvas_id"></canvas>
 
-    <div class="centered" id="loading_text">
-      <p style="font-size: 16px">Loading…</p>
-      <div class="lds-dual-ring"></div>
+    <div class="canvas-wrapper">
+      <div class="canvas-wrapper2 small">
+        <canvas id="the_canvas_id"></canvas>
+      </div>
     </div>
 
+     <div class="centered" id="loading_text"> 
+       <p style="font-size: 16px">Loading…</p> 
+       <div class="lds-dual-ring"></div> 
+     </div> 
+
     <script>
-      function fullscreen() {
-        document.querySelector("#the_canvas_id").requestFullscreen();
+      let zoomed = localStorage.getItem("zoomed") === "1";
+      if (zoomed) {
+        zoomed = false;
+        toggleZoom();
+      }
+
+      function toggleZoom() {
+        const canvasClasses = document.querySelector("div.canvas-wrapper2").classList;
+        zoomed = !zoomed;
+        if (zoomed) {
+          canvasClasses.remove("small");
+        } else {
+          canvasClasses.add("small");
+        }
+        localStorage.setItem("zoomed", zoomed ? "1" : "0");
       }
 
       // We disable caching during development so that we always view the latest version.
