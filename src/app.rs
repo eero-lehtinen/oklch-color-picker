@@ -13,7 +13,7 @@ use eframe::{
     egui_glow,
     glow::{self},
 };
-use egui::{Rect, Widget};
+use egui::{Key, Rect, Widget};
 use egui_extras::{Size, Strip, StripBuilder};
 use strum::IntoEnumIterator;
 use web_time::{Duration, Instant};
@@ -619,20 +619,28 @@ impl App {
                 .wrap_mode(egui::TextWrapMode::Wrap)
                 .stroke(egui::Stroke::new(1.0, self.fallbacks.cur_egui));
             let response = ui.add(button);
-            if response.clicked() {
-                println!(
-                    "{}",
-                    format_color(self.fallbacks.cur, self.format, self.use_alpha)
-                );
-                if cfg!(target_arch = "wasm32") {
+
+            if cfg!(target_arch = "wasm32") {
+                if response.clicked() {
                     ui.ctx().copy_text(format_color(
                         self.fallbacks.cur,
                         self.format,
                         self.use_alpha,
                     ));
                     self.copied_notice = Some(Instant::now());
-                } else {
+                }
+            } else {
+                let read_bind = ui.ctx().input(|i| i.focused) && !ui.ctx().wants_keyboard_input();
+                let done = read_bind && ui.ctx().input(|i| i.key_pressed(Key::D));
+                let quit = read_bind && ui.ctx().input(|i| i.key_pressed(Key::Q));
+                if response.clicked() || done {
+                    println!(
+                        "{}",
+                        format_color(self.fallbacks.cur, self.format, self.use_alpha)
+                    );
                     ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close)
+                } else if quit {
+                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
                 }
             }
             if self
