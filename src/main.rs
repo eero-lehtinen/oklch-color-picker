@@ -2,6 +2,7 @@
 
 use bevy_color::Oklcha;
 use formats::ColorFormat;
+use gamut::gamut_clip_preserve_chroma;
 use rand::{rngs::SmallRng, Rng, SeedableRng};
 #[cfg(not(target_arch = "wasm32"))]
 use std::process::ExitCode;
@@ -164,12 +165,13 @@ mod log_startup {
 
 fn random_color() -> Oklcha {
     let mut rng = SmallRng::from_os_rng();
-    Oklcha::new(
+    let color = Oklcha::new(
         rng.random_range(0.4..0.8),
         rng.random_range(0.05..0.2),
         rng.random_range(0.0..360.),
         1.,
-    )
+    );
+    gamut_clip_preserve_chroma(color.into()).into()
 }
 
 fn lerp(v0: f32, v1: f32, t: f32) -> f32 {
