@@ -732,8 +732,8 @@ impl App {
                 .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
                 .resizable(false)
                 .vscroll(true)
-                .default_width(600.)
-                .default_height(300.)
+                .min_width(600.)
+                .min_height(400.)
                 .collapsible(false)
                 .show(ui.ctx(), |ui| {
                     ui.label(RichText::new("Shortcuts").size(20.).strong());
@@ -772,10 +772,10 @@ impl App {
                         })
                         .body(|mut body| {
                             for (key, action) in keys {
-                                if key == "c" && !cfg!(target_arch = "wasm32") {
+                                if !cfg!(target_arch = "wasm32") && key == "c" {
                                     continue;
                                 }
-                                if key == "d" && cfg!(target_arch = "wasm32") {
+                                if cfg!(target_arch = "wasm32") && (key == "q" || key == "d") {
                                     continue;
                                 }
                                 body.row(20., |mut row| {
