@@ -309,6 +309,27 @@
             event.preventDefault();
           }
         });
+      // Do the same thing for the listener input created dynamically by egui.
+      const observer = new MutationObserver((mutationsList) => {
+        for (const mutation of mutationsList) {
+          for (const node of mutation.addedNodes) {
+            if (node.nodeType === Node.ELEMENT_NODE && node.matches('input')) {
+              node.addEventListener("keydown", (event) => {
+                const isCtrl = event.ctrlKey || event.metaKey; // Ctrl on Windows/Linux, Cmd on Mac
+                if (isCtrl && ["h", "j", "k", "l"].includes(event.key)) {
+                  event.preventDefault();
+                }
+              });
+              observer.disconnect();
+              return;
+            }
+          }
+        }
+      });
+      observer.observe(document.body, {
+        childList: true,
+        subtree: false
+      });
 
       let zoomed = localStorage.getItem("zoomed") === "1";
       if (zoomed) {
