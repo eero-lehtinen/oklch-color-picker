@@ -14,8 +14,8 @@ use eframe::{
     glow::{self},
 };
 use egui::ahash::HashSet;
-use egui::{EventFilter, Id, Key, Rect, Response, Sense, Ui, UiBuilder, Widget};
-use egui_extras::{Size, Strip, StripBuilder};
+use egui::{Align2, EventFilter, Id, Key, Margin, Rect, Response, Sense, Ui, UiBuilder, Widget};
+use egui_extras::{Column, Size, Strip, StripBuilder, TableBuilder};
 use strum::IntoEnumIterator;
 use web_time::{Duration, Instant};
 
@@ -221,6 +221,7 @@ pub struct App {
     copied_notice: Option<Instant>,
     first_input: Id,
     text_inputs: HashSet<Id>,
+    show_settings: bool,
 }
 
 #[derive(Default)]
@@ -266,6 +267,7 @@ impl App {
             copied_notice: None,
             first_input: Id::NULL,
             text_inputs: HashSet::default(),
+            show_settings: false,
         }
     }
 
@@ -700,16 +702,103 @@ impl App {
             .size = 18.;
         style.spacing.button_padding = egui::vec2(4.0, 3.0);
 
-        egui::ComboBox::from_id_salt("format")
-            .width(ui.available_width().min(190.))
-            .truncate()
-            .selected_text(self.format.to_string())
-            .height(500.)
-            .show_ui(ui, |ui| {
-                for format in ColorFormat::iter() {
-                    ui.selectable_value(&mut self.format, format, format.to_string());
-                }
-            });
+        ui.horizontal(|ui| {
+            egui::ComboBox::from_id_salt("format")
+                .width(ui.available_width().min(190.))
+                .truncate()
+                .selected_text(self.format.to_string())
+                .height(500.)
+                .show_ui(ui, |ui| {
+                    for format in ColorFormat::iter() {
+                        ui.selectable_value(&mut self.format, format, format.to_string());
+                    }
+                });
+
+            let response = ui.add(
+                egui::Button::new("?")
+                    .min_size(Vec2::new(ui.available_height(), ui.available_height())),
+            );
+            if response.clicked() {
+                self.show_settings = !self.show_settings;
+            }
+
+            ui.style_mut().spacing.window_margin = Margin::same(12);
+
+            let mut show_settings = self.show_settings;
+
+            egui::Window::new("Info")
+                .open(&mut show_settings)
+                .frame(egui::Frame::window(ui.style()))
+                .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
+                .resizable(false)
+                .vscroll(true)
+                .default_width(600.)
+                .default_height(300.)
+                .collapsible(false)
+                .show(ui.ctx(), |ui| {
+                    ui.label(RichText::new("Shortcuts").size(20.).strong());
+
+                    if self.hotkey(ui, Key::Escape) {
+                        self.show_settings = false;
+                    }
+
+                    ui.add_space(10.);
+
+                    let headers = ["Key", "Action"];
+                    let keys = [
+                        ("q", "Quit"),
+                        ("c", "Copy to clipboard"),
+                        ("d", "Done (print result to console)"),
+                        ("←/↓/↑/→", "Move focus or control input"),
+                        ("h/j/k/l", "Move focus or control input (Vim style)"),
+                        ("1/2", "Switch focus to pickers"),
+                        ("3/4/5/6", "Switch focus to sliders"),
+                        ("Tab/S-Tab", "Cycle focus"),
+                        ("Esc/Enter", "Back/Submit"),
+                    ];
+
+                    let table = TableBuilder::new(ui)
+                        .striped(true)
+                        .column(Column::exact(100.))
+                        .column(Column::remainder());
+
+                    table
+                        .header(26., |mut header| {
+                            for h in headers {
+                                header.col(|ui| {
+                                    ui.strong(h);
+                                });
+                            }
+                        })
+                        .body(|mut body| {
+                            for (key, action) in keys {
+                                if key == "c" && !cfg!(target_arch = "wasm32") {
+                                    continue;
+                                }
+                                if key == "d" && cfg!(target_arch = "wasm32") {
+                                    continue;
+                                }
+                                body.row(20., |mut row| {
+                                    row.col(|ui| {
+                                        ui.label(RichText::new(key).size(16.));
+                                    });
+                                    row.col(|ui| {
+                                        ui.label(RichText::new(action).size(16.));
+                                    });
+                                })
+                            }
+                        });
+
+                    ui.add_space(10.);
+                    ui.label("Hold Ctrl (or Cmd on macOS) to force switching focus when the focused input would consume that key.");
+                    ui.add_space(5.);
+                    ui.label("Hold Shift to change values in larger steps.");
+                });
+
+            if !show_settings {
+                self.show_settings = false;
+            }
+        });
         if self.format.needs_explicit_alpha() {
             ui.add_space(2.);
             if ui
@@ -762,7 +851,8 @@ impl App {
             let response = ui.add(button);
 
             if cfg!(target_arch = "wasm32") {
-                if response.clicked() {
+                let copy = self.hotkey(ui, Key::C);
+                if response.clicked() || copy {
                     ui.ctx().copy_text(format_color(
                         self.fallbacks.cur,
                         self.format,
