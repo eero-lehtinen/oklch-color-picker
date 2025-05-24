@@ -300,6 +300,16 @@
      </div> 
 
     <script>
+      // ALlow vim like navigation with h, j, k, l without activating the browser's default shortcuts.
+      document
+        .getElementById("the_canvas_id")
+        .addEventListener("keydown", (event) => {
+          const isCtrl = event.ctrlKey || event.metaKey; // Ctrl on Windows/Linux, Cmd on Mac
+          if (isCtrl && ["h", "j", "k", "l"].includes(event.key)) {
+            event.preventDefault();
+          }
+        });
+
       let zoomed = localStorage.getItem("zoomed") === "1";
       if (zoomed) {
         zoomed = false;
