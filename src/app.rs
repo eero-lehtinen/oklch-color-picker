@@ -13,7 +13,7 @@ use eframe::{
     egui_glow,
     glow::{self},
 };
-use egui::{Key, Rect, Widget};
+use egui::{Key, Rect, Response, Sense, Ui, UiBuilder, Widget};
 use egui_extras::{Size, Strip, StripBuilder};
 use strum::IntoEnumIterator;
 use web_time::{Duration, Instant};
@@ -60,47 +60,83 @@ fn setup_egui_config(ctx: &egui::Context) {
         style.spacing.button_padding = egui::vec2(8.0, 4.0);
         style.spacing.icon_width *= 1.8;
         style.spacing.icon_width_inner *= 1.8;
-        style.visuals.widgets.open.corner_radius = 4.0.into();
-        style.visuals.widgets.active.corner_radius = 4.0.into();
-        style.visuals.widgets.hovered.corner_radius = 4.0.into();
-        style.visuals.widgets.inactive.corner_radius = 4.0.into();
-        style.visuals.widgets.noninteractive.corner_radius = 4.0.into();
+        let corner_radius = 6.0.into();
+        style.visuals.widgets.open.corner_radius = corner_radius;
+        style.visuals.widgets.active.corner_radius = corner_radius;
+        style.visuals.widgets.hovered.corner_radius = corner_radius;
+        style.visuals.widgets.inactive.corner_radius = corner_radius;
+        style.visuals.widgets.noninteractive.corner_radius = corner_radius;
+        let stroke_width = 1.0;
         style.visuals.widgets.inactive.bg_stroke =
-            egui::Stroke::new(1.0, style.visuals.widgets.inactive.bg_fill);
+            egui::Stroke::new(stroke_width, style.visuals.widgets.inactive.bg_fill);
+        style.visuals.widgets.hovered.bg_stroke.width = stroke_width;
+        style.visuals.widgets.active.bg_stroke.width = stroke_width;
+        style.visuals.widgets.open.bg_stroke.width = stroke_width;
     });
 }
 
 const CHROMA_MAX: f32 = 0.33;
 
-const LINE_COLOR: Color32 = Color32::from_gray(30);
-const LINE_COLOR2: Color32 = Color32::from_gray(220);
+const LINE_COLOR_DARK: Color32 = Color32::from_gray(30);
+const LINE_COLOR_LIGHT: Color32 = Color32::from_gray(210);
+const LINE_COLOR_LIGHT_FOCUSED: Color32 = Color32::from_gray(210);
+const LINE_COLOR_LIGHT_ACTIVE: Color32 = Color32::from_gray(250);
 
 const MID_GRAY: egui::Rgba =
     egui::Rgba::from_rgba_premultiplied(0.18406294, 0.18406294, 0.18406294, 1.);
 
-fn canvas_picker(ui: &mut egui::Ui) -> egui::Frame {
-    egui::Frame::canvas(ui.style())
-        .inner_margin(7.0)
-        .outer_margin(egui::Margin {
-            bottom: 9,
-            left: 9,
-            right: 9,
-            top: 0,
-        })
-        .fill(MID_GRAY.into())
+enum CanavasInputKind {
+    Picker,
+    Slider,
 }
 
-fn canvas_slider(ui: &mut egui::Ui) -> egui::Frame {
-    let h = ui.available_height();
-    egui::Frame::canvas(ui.style())
-        .inner_margin(4.0)
-        .outer_margin(egui::Margin {
-            left: 10,
-            right: 14,
-            bottom: (h / 8.) as i8,
-            top: (h / 8.) as i8,
-        })
-        .fill(MID_GRAY.into())
+fn canvas_input(
+    kind: CanavasInputKind,
+    ui: &mut Ui,
+    add_contents: impl FnOnce(Response, Rect, &mut Ui),
+) {
+    ui.scope_builder(UiBuilder::new().sense(Sense::drag()), |ui| {
+        let h = ui.available_height();
+        let response = ui.response();
+        ui.style_mut().visuals.widgets.inactive.bg_stroke.color = MID_GRAY.into();
+        let visuals = ui.style().interact(&response);
+
+        let (inner_margin, outer_margin) = match kind {
+            CanavasInputKind::Picker => (
+                7.0,
+                egui::Margin {
+                    bottom: 9,
+                    left: 9,
+                    right: 9,
+                    top: 0,
+                },
+            ),
+            CanavasInputKind::Slider => (
+                4.0,
+                egui::Margin {
+                    left: 10,
+                    right: 14,
+                    bottom: (h / 8.) as i8,
+                    top: (h / 8.) as i8,
+                },
+            ),
+        };
+
+        egui::Frame::canvas(ui.style())
+            .stroke(visuals.bg_stroke)
+            .inner_margin(inner_margin)
+            .outer_margin(outer_margin)
+            .fill(MID_GRAY.into())
+            .show(ui, |ui| {
+                match kind {
+                    CanavasInputKind::Picker => ui.set_width(ui.available_width()),
+                    CanavasInputKind::Slider => ui.set_width(ui.available_width() - 100.),
+                }
+                ui.set_height(ui.available_height());
+                let rect = ui.available_rect_before_wrap();
+                add_contents(response, rect, ui);
+            })
+    });
 }
 
 fn canvas_final(ui: &mut egui::Ui) -> egui::Frame {
@@ -221,7 +257,7 @@ impl App {
              name: &str,
              labels: &mut Vec<(Rect, RichText)>| {
                 let width = 1.;
-                let color = LINE_COLOR;
+                let color = LINE_COLOR_DARK;
                 let border = 5.5;
                 if vertical {
                     let pos = lerp(rect.left(), rect.right(), pos);
@@ -259,10 +295,7 @@ impl App {
             };
 
         strip.cell(|ui| {
-            canvas_picker(ui).show(ui, |ui| {
-                let (rect, response) =
-                    ui.allocate_exact_size(ui.available_size(), egui::Sense::drag());
-
+            canvas_input(CanavasInputKind::Picker, ui, |response, rect, ui| {
                 if let Some(pos) = response.interact_pointer_pos() {
                     self.color.lightness_r = map(pos.x, (rect.left(), rect.right()), (0., 1.));
                     self.color.chroma = map(pos.y, (rect.top(), rect.bottom()), (CHROMA_MAX, 0.));
@@ -278,10 +311,7 @@ impl App {
         });
 
         strip.cell(|ui| {
-            canvas_picker(ui).show(ui, |ui| {
-                let (rect, response) =
-                    ui.allocate_exact_size(ui.available_size(), egui::Sense::drag());
-
+            canvas_input(CanavasInputKind::Picker, ui, |response, rect, ui| {
                 if let Some(pos) = response.interact_pointer_pos() {
                     self.color.hue = map(pos.x, (rect.left(), rect.right()), (0., 360.));
                     self.color.chroma = map(pos.y, (rect.top(), rect.bottom()), (CHROMA_MAX, 0.));
@@ -299,31 +329,34 @@ impl App {
 
     fn update_sliders(&mut self, builder: StripBuilder) {
         let slider_thumb_color = self.fallbacks.cur_egui;
-        let paint_slider_thumb = |ui: &mut egui::Ui, rect: egui::Rect, pos: f32| {
-            let center = Pos2::new(
-                lerp(rect.left(), rect.right(), pos),
-                rect.top() + rect.height() / 2.,
-            );
+        let paint_slider_thumb =
+            |ui: &mut egui::Ui, rect: egui::Rect, pos: f32, response: &Response| {
+                let center = Pos2::new(
+                    lerp(rect.left(), rect.right(), pos),
+                    rect.top() + rect.height() / 2.,
+                );
 
-            let painter = ui.painter();
+                ui.style_mut().visuals.widgets.inactive.bg_stroke.color = LINE_COLOR_LIGHT;
+                ui.style_mut().visuals.widgets.hovered.bg_stroke.color = LINE_COLOR_LIGHT_FOCUSED;
+                ui.style_mut().visuals.widgets.active.bg_stroke.color = LINE_COLOR_LIGHT_ACTIVE;
 
-            let stroke_color = if ui.ctx().theme() == egui::Theme::Dark {
-                LINE_COLOR2
-            } else {
-                LINE_COLOR
+                let painter = ui.painter();
+
+                let visuals = ui.style().interact(response);
+
+                let stroke_color = visuals.bg_stroke.color;
+
+                painter.rect(
+                    egui::Rect::from_center_size(
+                        center,
+                        egui::vec2((rect.width() / 85.).clamp(9., 22.), rect.height() + 10.),
+                    ),
+                    4.,
+                    slider_thumb_color,
+                    Stroke::new(3.0, stroke_color),
+                    egui::StrokeKind::Outside,
+                );
             };
-
-            painter.rect(
-                egui::Rect::from_center_size(
-                    center,
-                    egui::vec2((rect.width() / 85.).clamp(9., 22.), rect.height() + 10.),
-                ),
-                4.,
-                slider_thumb_color,
-                Stroke::new(3.0, stroke_color),
-                egui::StrokeKind::Outside,
-            );
-        };
 
         let input_size = Vec2::new(68., 26.);
         let show_label = |ui: &mut egui::Ui, label: &str| {
@@ -331,22 +364,16 @@ impl App {
             ui.add_sized(Vec2::new(12., 26.), label);
         };
         builder.sizes(Size::remainder(), 4).vertical(|mut strip| {
-            let field_width = Vec2::new(100., 0.);
             strip.cell(|ui| {
                 ui.horizontal_centered(|ui| {
-                    canvas_slider(ui).show(ui, |ui| {
-                        let (rect, response) = ui.allocate_exact_size(
-                            ui.available_size() - field_width,
-                            egui::Sense::drag(),
-                        );
-
+                    canvas_input(CanavasInputKind::Slider, ui, |response, rect, ui| {
                         if let Some(pos) = response.interact_pointer_pos() {
                             self.color.lightness_r =
                                 map(pos.x, (rect.left(), rect.right()), (0., 1.));
                         }
 
                         self.glow_paint(ui, ProgramKind::Lightness, rect.size());
-                        paint_slider_thumb(ui, rect, self.color.lightness_r);
+                        paint_slider_thumb(ui, rect, self.color.lightness_r, &response);
                     });
 
                     let get_set = |v: Option<f64>| match v {
@@ -368,19 +395,14 @@ impl App {
             });
             strip.cell(|ui| {
                 ui.horizontal_centered(|ui| {
-                    canvas_slider(ui).show(ui, |ui| {
-                        let (rect, response) = ui.allocate_exact_size(
-                            ui.available_size() - field_width,
-                            egui::Sense::drag(),
-                        );
-
+                    canvas_input(CanavasInputKind::Slider, ui, |response, rect, ui| {
                         if let Some(pos) = response.interact_pointer_pos() {
                             self.color.chroma =
                                 map(pos.x, (rect.left(), rect.right()), (0., CHROMA_MAX));
                         }
 
                         self.glow_paint(ui, ProgramKind::Chroma, rect.size());
-                        paint_slider_thumb(ui, rect, self.color.chroma / CHROMA_MAX);
+                        paint_slider_thumb(ui, rect, self.color.chroma / CHROMA_MAX, &response);
                     });
                     let get_set = |v: Option<f64>| match v {
                         Some(v) => {
@@ -402,18 +424,13 @@ impl App {
 
             strip.cell(|ui| {
                 ui.horizontal_centered(|ui| {
-                    canvas_slider(ui).show(ui, |ui| {
-                        let (rect, response) = ui.allocate_exact_size(
-                            ui.available_size() - field_width,
-                            egui::Sense::drag(),
-                        );
-
+                    canvas_input(CanavasInputKind::Slider, ui, |response, rect, ui| {
                         if let Some(pos) = response.interact_pointer_pos() {
                             self.color.hue = map(pos.x, (rect.left(), rect.right()), (0., 360.));
                         }
 
                         self.glow_paint(ui, ProgramKind::Hue, rect.size());
-                        paint_slider_thumb(ui, rect, self.color.hue / 360.);
+                        paint_slider_thumb(ui, rect, self.color.hue / 360., &response);
                     });
 
                     let get_set = |v: Option<f64>| match v {
@@ -436,19 +453,14 @@ impl App {
 
             strip.cell(|ui| {
                 ui.horizontal_centered(|ui| {
-                    canvas_slider(ui).show(ui, |ui| {
-                        let (rect, response) = ui.allocate_exact_size(
-                            ui.available_size() - field_width,
-                            egui::Sense::drag(),
-                        );
-
+                    canvas_input(CanavasInputKind::Slider, ui, |response, rect, ui| {
                         if let Some(pos) = response.interact_pointer_pos() {
                             self.color.alpha = map(pos.x, (rect.left(), rect.right()), (0., 1.));
                             self.use_alpha = true;
                         }
 
                         self.glow_paint(ui, ProgramKind::Alpha, rect.size());
-                        paint_slider_thumb(ui, rect, self.color.alpha);
+                        paint_slider_thumb(ui, rect, self.color.alpha, &response);
                     });
                     let get_set = |v: Option<f64>| match v {
                         Some(v) => {
@@ -611,7 +623,7 @@ impl App {
             let button = egui::Button::new(RichText::new(text).size(font_size))
                 .min_size(Vec2::new(max_w, max_h))
                 .wrap_mode(egui::TextWrapMode::Wrap)
-                .stroke(egui::Stroke::new(1.0, self.fallbacks.cur_egui));
+                .stroke(egui::Stroke::new(2.0, self.fallbacks.cur_egui));
             let response = ui.add(button);
 
             if cfg!(target_arch = "wasm32") {
