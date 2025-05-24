@@ -824,7 +824,7 @@ impl eframe::App for App {
         if !text_input_focused || raw_input.modifiers.command {
             let nothing_focused = ctx.memory(|m| m.focused().is_none());
             let mut wants_something_focused = false;
-            let mut focus_move = false;
+            let mut wants_move_focus = false;
 
             let vim_keys = [
                 (Key::H, Key::ArrowLeft),
@@ -835,16 +835,18 @@ impl eframe::App for App {
 
             raw_input.events.retain_mut(|event| {
                 if let egui::Event::Key { key, .. } = event {
-                    if let Some((_, arrow_key)) = vim_keys.iter().find(|(k, _)| k == key) {
+                    if let Some((_, arrow_key)) =
+                        vim_keys.iter().find(|(vim_key, _)| vim_key == key)
+                    {
                         *key = *arrow_key;
-                        focus_move = true;
+                        wants_move_focus = true;
                         if nothing_focused {
                             wants_something_focused = true;
                             return false;
                         }
                     }
-                    if vim_keys.iter().any(|(_, k)| k == key) {
-                        focus_move = true;
+                    if vim_keys.iter().any(|(_, arrow_key)| arrow_key == key) {
+                        wants_move_focus = true;
                         if nothing_focused {
                             wants_something_focused = true;
                             return false;
@@ -865,7 +867,8 @@ impl eframe::App for App {
                 });
             }
 
-            if focus_move && raw_input.modifiers.command {
+            // Make all inputs ignore focus lock if we want to move focus and command is pressed.
+            if wants_move_focus && raw_input.modifiers.command {
                 ctx.memory_mut(|memory| {
                     if let Some(id) = memory.focused() {
                         memory.set_focus_lock_filter(id, EventFilter::default());
