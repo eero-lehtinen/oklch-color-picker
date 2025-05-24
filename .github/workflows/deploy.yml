@@ -53,7 +53,7 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ matrix.build }}
+          key: ${{ matrix.target }}
 
       - name: Build
         run: |
