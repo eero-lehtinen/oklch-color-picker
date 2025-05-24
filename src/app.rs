@@ -13,7 +13,8 @@ use eframe::{
     egui_glow,
     glow::{self},
 };
-use egui::{EventFilter, Key, Rect, Response, Sense, Ui, UiBuilder, Widget};
+use egui::ahash::HashSet;
+use egui::{EventFilter, Id, Key, Rect, Response, Sense, Ui, UiBuilder, Widget};
 use egui_extras::{Size, Strip, StripBuilder};
 use strum::IntoEnumIterator;
 use web_time::{Duration, Instant};
@@ -112,7 +113,7 @@ fn canvas_input(
     kind: CanvasInputKind,
     ui: &mut Ui,
     add_contents: impl FnOnce(Response, Option<CanvasInputKeyOutput>, Rect, &mut Ui),
-) {
+) -> Id {
     ui.scope_builder(UiBuilder::new().sense(Sense::drag()), |ui| {
         let h = ui.available_height();
         let response = ui.response();
@@ -134,12 +135,21 @@ fn canvas_input(
             });
 
             ui.input(|input| {
-                let o = CanvasInputKeyOutput {
+                if input.modifiers.command {
+                    return;
+                }
+                let mut o = CanvasInputKeyOutput {
                     vertical: input.num_presses(Key::ArrowUp) as f32
                         - input.num_presses(Key::ArrowDown) as f32,
                     horizontal: input.num_presses(Key::ArrowRight) as f32
                         - input.num_presses(Key::ArrowLeft) as f32,
                 };
+
+                if input.modifiers.shift {
+                    o.horizontal *= 10.;
+                    o.vertical *= 10.;
+                }
+
                 if o.horizontal != 0. || o.vertical != 0. {
                     key_output = Some(o);
                 }
@@ -181,7 +191,9 @@ fn canvas_input(
                 let rect = ui.available_rect_before_wrap();
                 add_contents(response, key_output, rect, ui);
             })
-    });
+    })
+    .response
+    .id
 }
 
 fn canvas_final(ui: &mut egui::Ui) -> egui::Frame {
@@ -207,6 +219,8 @@ pub struct App {
     frame_end_labels: Vec<(Rect, RichText)>,
     fallbacks: Fallbacks,
     copied_notice: Option<Instant>,
+    first_input: Id,
+    text_inputs: HashSet<Id>,
 }
 
 #[derive(Default)]
@@ -250,6 +264,8 @@ impl App {
             frame_end_labels: Default::default(),
             fallbacks: Default::default(),
             copied_notice: None,
+            first_input: Id::NULL,
+            text_inputs: HashSet::default(),
         }
     }
 
@@ -340,10 +356,11 @@ impl App {
             };
 
         strip.cell(|ui| {
-            canvas_input(
+            let id = canvas_input(
                 CanvasInputKind::Picker,
                 ui,
                 |response, key_output, rect, ui| {
+                    self.focus_hotkey(ui, &response, Key::Num1);
                     if let Some(pos) = response.interact_pointer_pos() {
                         self.color.lightness_r = map(pos.x, (rect.left(), rect.right()), (0., 1.));
                         self.color.chroma =
@@ -362,6 +379,7 @@ impl App {
                     paint_picker_line(ui, false, rect, c, "C", &mut self.frame_end_labels);
                 },
             );
+            self.first_input = id;
         });
 
         strip.cell(|ui| {
@@ -369,6 +387,7 @@ impl App {
                 CanvasInputKind::Picker,
                 ui,
                 |response, key_output, rect, ui| {
+                    self.focus_hotkey(ui, &response, Key::Num2);
                     if let Some(pos) = response.interact_pointer_pos() {
                         self.color.hue = map(pos.x, (rect.left(), rect.right()), (0., 360.));
                         self.color.chroma =
@@ -433,6 +452,7 @@ impl App {
                         CanvasInputKind::Slider,
                         ui,
                         |response, key_output, rect, ui| {
+                            self.focus_hotkey(ui, &response, Key::Num3);
                             if let Some(pos) = response.interact_pointer_pos() {
                                 self.color.lightness_r =
                                     map(pos.x, (rect.left(), rect.right()), (0., 1.));
@@ -459,13 +479,14 @@ impl App {
                         }
                         None => self.color.lightness_r as f64,
                     };
-                    ui.add_sized(
+                    let response = ui.add_sized(
                         input_size,
                         DragValue::from_get_set(get_set)
                             .speed(1. * 0.001)
                             .range(0.0..=1.0)
                             .max_decimals(4),
                     );
+                    self.text_inputs.insert(response.id);
                     show_label(ui, "Lr");
                 });
             });
@@ -475,6 +496,7 @@ impl App {
                         CanvasInputKind::Slider,
                         ui,
                         |response, key_output, rect, ui| {
+                            self.focus_hotkey(ui, &response, Key::Num4);
                             if let Some(pos) = response.interact_pointer_pos() {
                                 self.color.chroma =
                                     map(pos.x, (rect.left(), rect.right()), (0., CHROMA_MAX));
@@ -500,13 +522,14 @@ impl App {
                         }
                         None => self.color.chroma as f64,
                     };
-                    ui.add_sized(
+                    let reponse = ui.add_sized(
                         input_size,
                         DragValue::from_get_set(get_set)
                             .speed(CHROMA_MAX * 0.001)
                             .range(0.0..=CHROMA_MAX)
                             .max_decimals(4),
                     );
+                    self.text_inputs.insert(reponse.id);
                     show_label(ui, "C");
                 });
             });
@@ -517,6 +540,7 @@ impl App {
                         CanvasInputKind::Slider,
                         ui,
                         |response, key_output, rect, ui| {
+                            self.focus_hotkey(ui, &response, Key::Num5);
                             if let Some(pos) = response.interact_pointer_pos() {
                                 self.color.hue =
                                     map(pos.x, (rect.left(), rect.right()), (0., 360.));
@@ -537,13 +561,14 @@ impl App {
                         }
                         None => self.color.hue as f64,
                     };
-                    ui.add_sized(
+                    let response = ui.add_sized(
                         input_size,
                         DragValue::from_get_set(get_set)
                             .speed(360. * 0.001)
                             .range(0.0..=360.0)
                             .max_decimals(2),
                     );
+                    self.text_inputs.insert(response.id);
                     show_label(ui, "H");
                 });
             });
@@ -554,6 +579,7 @@ impl App {
                         CanvasInputKind::Slider,
                         ui,
                         |response, key_output, rect, ui| {
+                            self.focus_hotkey(ui, &response, Key::Num6);
                             if let Some(pos) = response.interact_pointer_pos() {
                                 self.color.alpha =
                                     map(pos.x, (rect.left(), rect.right()), (0., 1.));
@@ -576,13 +602,14 @@ impl App {
                         }
                         None => self.color.alpha as f64,
                     };
-                    ui.add_sized(
+                    let response = ui.add_sized(
                         input_size,
                         DragValue::from_get_set(get_set)
                             .speed(1. * 0.001)
                             .range(0.0..=1.0)
                             .max_decimals(4),
                     );
+                    self.text_inputs.insert(response.id);
                     show_label(ui, "A");
                 });
             });
@@ -613,6 +640,8 @@ impl App {
             .margin(6.0)
             .desired_width(f32::INFINITY)
             .show(ui);
+        self.text_inputs.insert(output.response.id);
+
         if output.response.has_focus() {
             self.input_text.insert(id, text.clone());
         }
@@ -742,9 +771,8 @@ impl App {
                     self.copied_notice = Some(Instant::now());
                 }
             } else {
-                let read_bind = ui.ctx().input(|i| i.focused) && !ui.ctx().wants_keyboard_input();
-                let done = read_bind && ui.ctx().input(|i| i.key_pressed(Key::D));
-                let quit = read_bind && ui.ctx().input(|i| i.key_pressed(Key::Q));
+                let done = self.hotkey(ui, Key::D);
+                let quit = self.hotkey(ui, Key::Q);
                 if response.clicked() || done {
                     println!(
                         "{}",
@@ -770,9 +798,83 @@ impl App {
             }
         });
     }
+
+    fn focus_hotkey(&self, ui: &mut Ui, response: &Response, key: Key) {
+        let text_input_focused =
+            ui.memory(|m| m.focused().is_some_and(|id| self.text_inputs.contains(&id)));
+        if ui.input(|input| {
+            (!text_input_focused || input.modifiers.command) && input.key_pressed(key)
+        }) {
+            response.request_focus();
+        }
+    }
+
+    fn hotkey(&self, ui: &mut Ui, key: Key) -> bool {
+        let text_input_focused =
+            ui.memory(|m| m.focused().is_some_and(|id| self.text_inputs.contains(&id)));
+        ui.input(|input| (!text_input_focused || input.modifiers.command) && input.key_pressed(key))
+    }
 }
 
 impl eframe::App for App {
+    fn raw_input_hook(&mut self, ctx: &egui::Context, raw_input: &mut egui::RawInput) {
+        let text_input_focused =
+            ctx.memory(|m| m.focused().is_some_and(|id| self.text_inputs.contains(&id)));
+
+        if !text_input_focused || raw_input.modifiers.command {
+            let nothing_focused = ctx.memory(|m| m.focused().is_none());
+            let mut wants_something_focused = false;
+            let mut focus_move = false;
+
+            let vim_keys = [
+                (Key::H, Key::ArrowLeft),
+                (Key::J, Key::ArrowDown),
+                (Key::K, Key::ArrowUp),
+                (Key::L, Key::ArrowRight),
+            ];
+
+            raw_input.events.retain_mut(|event| {
+                if let egui::Event::Key { key, .. } = event {
+                    if let Some((_, arrow_key)) = vim_keys.iter().find(|(k, _)| k == key) {
+                        *key = *arrow_key;
+                        focus_move = true;
+                        if nothing_focused {
+                            wants_something_focused = true;
+                            return false;
+                        }
+                    }
+                    if vim_keys.iter().any(|(_, k)| k == key) {
+                        focus_move = true;
+                        if nothing_focused {
+                            wants_something_focused = true;
+                            return false;
+                        }
+                    }
+                }
+                if let egui::Event::Text(text) = event {
+                    if ["h", "j", "k", "l"].contains(&text.to_ascii_lowercase().as_str()) {
+                        *text = String::new();
+                    }
+                }
+                true
+            });
+
+            if wants_something_focused {
+                ctx.memory_mut(|memory| {
+                    memory.request_focus(self.first_input);
+                });
+            }
+
+            if focus_move && raw_input.modifiers.command {
+                ctx.memory_mut(|memory| {
+                    if let Some(id) = memory.focused() {
+                        memory.set_focus_lock_filter(id, EventFilter::default());
+                    }
+                });
+            }
+        }
+    }
+
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
         if self.first_frame {
             log_startup::log("First frame start");
