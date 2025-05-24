@@ -509,7 +509,7 @@ impl App {
                     canvas_final(ui).show(ui, |ui| {
                         let (rect, _) = ui.allocate_exact_size(
                             Vec2::new(ui.available_width(), ui.available_height()),
-                            egui::Sense::drag(),
+                            egui::Sense::empty(),
                         );
                         self.glow_paint(ui, ProgramKind::Final, rect.size());
                     });
