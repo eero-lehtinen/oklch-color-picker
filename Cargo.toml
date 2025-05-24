@@ -1,7 +1,7 @@
 [package]
 name = "oklch-color-picker"
 version = "2.1.0"
-edition = "2021"
+edition = "2024"
 license = "MIT"
 description = "A standalone graphical color picker using the Oklch color space. Allows output to hex, rgb, hsl and many other formats."
 repository = "https://github.com/eero-lehtinen/oklch-color-picker"
