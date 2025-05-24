@@ -182,3 +182,4 @@ fn map(input: f32, from: (f32, f32), to: (f32, f32)) -> f32 {
     ((to.1 - to.0) * (input - from.0) / (from.1 - from.0) + to.0)
         .clamp(to.0.min(to.1), to.1.max(to.0))
 }
+

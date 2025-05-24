@@ -13,7 +13,7 @@ use eframe::{
     egui_glow,
     glow::{self},
 };
-use egui::{Key, Rect, Response, Sense, Ui, UiBuilder, Widget};
+use egui::{EventFilter, Key, Rect, Response, Sense, Ui, UiBuilder, Widget};
 use egui_extras::{Size, Strip, StripBuilder};
 use strum::IntoEnumIterator;
 use web_time::{Duration, Instant};
@@ -85,15 +85,33 @@ const LINE_COLOR_LIGHT_ACTIVE: Color32 = Color32::from_gray(250);
 const MID_GRAY: egui::Rgba =
     egui::Rgba::from_rgba_premultiplied(0.18406294, 0.18406294, 0.18406294, 1.);
 
-enum CanavasInputKind {
+fn round_precision(value: f32, precision: f32) -> f32 {
+    (value / precision).round() * precision
+}
+
+fn value_update(value: &mut f32, update_amount: f32, precision: f32, min: f32, max: f32) {
+    if update_amount == 0. {
+        return;
+    }
+    *value = round_precision(*value + update_amount * precision, precision).clamp(min, max);
+}
+
+#[derive(Clone, Copy, Debug)]
+enum CanvasInputKind {
     Picker,
     Slider,
 }
 
+#[derive(Clone, Copy, Debug, Default)]
+struct CanvasInputKeyOutput {
+    vertical: f32,
+    horizontal: f32,
+}
+
 fn canvas_input(
-    kind: CanavasInputKind,
+    kind: CanvasInputKind,
     ui: &mut Ui,
-    add_contents: impl FnOnce(Response, Rect, &mut Ui),
+    add_contents: impl FnOnce(Response, Option<CanvasInputKeyOutput>, Rect, &mut Ui),
 ) {
     ui.scope_builder(UiBuilder::new().sense(Sense::drag()), |ui| {
         let h = ui.available_height();
@@ -101,8 +119,35 @@ fn canvas_input(
         ui.style_mut().visuals.widgets.inactive.bg_stroke.color = MID_GRAY.into();
         let visuals = ui.style().interact(&response);
 
+        let mut key_output = None;
+
+        if response.has_focus() {
+            ui.ctx().memory_mut(|m| {
+                m.set_focus_lock_filter(
+                    response.id,
+                    EventFilter {
+                        horizontal_arrows: true,
+                        vertical_arrows: matches!(kind, CanvasInputKind::Picker),
+                        ..Default::default()
+                    },
+                );
+            });
+
+            ui.input(|input| {
+                let o = CanvasInputKeyOutput {
+                    vertical: input.num_presses(Key::ArrowUp) as f32
+                        - input.num_presses(Key::ArrowDown) as f32,
+                    horizontal: input.num_presses(Key::ArrowRight) as f32
+                        - input.num_presses(Key::ArrowLeft) as f32,
+                };
+                if o.horizontal != 0. || o.vertical != 0. {
+                    key_output = Some(o);
+                }
+            });
+        }
+
         let (inner_margin, outer_margin) = match kind {
-            CanavasInputKind::Picker => (
+            CanvasInputKind::Picker => (
                 7.0,
                 egui::Margin {
                     bottom: 9,
@@ -111,7 +156,7 @@ fn canvas_input(
                     top: 0,
                 },
             ),
-            CanavasInputKind::Slider => (
+            CanvasInputKind::Slider => (
                 4.0,
                 egui::Margin {
                     left: 10,
@@ -129,12 +174,12 @@ fn canvas_input(
             .fill(MID_GRAY.into())
             .show(ui, |ui| {
                 match kind {
-                    CanavasInputKind::Picker => ui.set_width(ui.available_width()),
-                    CanavasInputKind::Slider => ui.set_width(ui.available_width() - 100.),
+                    CanvasInputKind::Picker => ui.set_width(ui.available_width()),
+                    CanvasInputKind::Slider => ui.set_width(ui.available_width() - 100.),
                 }
                 ui.set_height(ui.available_height());
                 let rect = ui.available_rect_before_wrap();
-                add_contents(response, rect, ui);
+                add_contents(response, key_output, rect, ui);
             })
     });
 }
@@ -295,35 +340,53 @@ impl App {
             };
 
         strip.cell(|ui| {
-            canvas_input(CanavasInputKind::Picker, ui, |response, rect, ui| {
-                if let Some(pos) = response.interact_pointer_pos() {
-                    self.color.lightness_r = map(pos.x, (rect.left(), rect.right()), (0., 1.));
-                    self.color.chroma = map(pos.y, (rect.top(), rect.bottom()), (CHROMA_MAX, 0.));
-                }
+            canvas_input(
+                CanvasInputKind::Picker,
+                ui,
+                |response, key_output, rect, ui| {
+                    if let Some(pos) = response.interact_pointer_pos() {
+                        self.color.lightness_r = map(pos.x, (rect.left(), rect.right()), (0., 1.));
+                        self.color.chroma =
+                            map(pos.y, (rect.top(), rect.bottom()), (CHROMA_MAX, 0.));
+                    }
+                    if let Some(o) = key_output {
+                        value_update(&mut self.color.lightness_r, o.horizontal, 0.01, 0., 1.);
+                        value_update(&mut self.color.chroma, o.vertical, 0.005, 0., CHROMA_MAX);
+                    }
 
-                self.glow_paint(ui, ProgramKind::Picker, rect.size());
+                    self.glow_paint(ui, ProgramKind::Picker, rect.size());
 
-                let l = self.color.lightness_r;
-                paint_picker_line(ui, true, rect, l, "Lr", &mut self.frame_end_labels);
-                let c = self.color.chroma / CHROMA_MAX;
-                paint_picker_line(ui, false, rect, c, "C", &mut self.frame_end_labels);
-            });
+                    let l = self.color.lightness_r;
+                    paint_picker_line(ui, true, rect, l, "Lr", &mut self.frame_end_labels);
+                    let c = self.color.chroma / CHROMA_MAX;
+                    paint_picker_line(ui, false, rect, c, "C", &mut self.frame_end_labels);
+                },
+            );
         });
 
         strip.cell(|ui| {
-            canvas_input(CanavasInputKind::Picker, ui, |response, rect, ui| {
-                if let Some(pos) = response.interact_pointer_pos() {
-                    self.color.hue = map(pos.x, (rect.left(), rect.right()), (0., 360.));
-                    self.color.chroma = map(pos.y, (rect.top(), rect.bottom()), (CHROMA_MAX, 0.));
-                }
+            canvas_input(
+                CanvasInputKind::Picker,
+                ui,
+                |response, key_output, rect, ui| {
+                    if let Some(pos) = response.interact_pointer_pos() {
+                        self.color.hue = map(pos.x, (rect.left(), rect.right()), (0., 360.));
+                        self.color.chroma =
+                            map(pos.y, (rect.top(), rect.bottom()), (CHROMA_MAX, 0.));
+                    }
+                    if let Some(o) = key_output {
+                        value_update(&mut self.color.hue, o.horizontal, 3., 0., 360.);
+                        value_update(&mut self.color.chroma, o.vertical, 0.005, 0., CHROMA_MAX);
+                    }
 
-                self.glow_paint(ui, ProgramKind::Picker2, rect.size());
+                    self.glow_paint(ui, ProgramKind::Picker2, rect.size());
 
-                let h = self.color.hue / 360.;
-                paint_picker_line(ui, true, rect, h, "H", &mut self.frame_end_labels);
-                let c = self.color.chroma / CHROMA_MAX;
-                paint_picker_line(ui, false, rect, c, "", &mut self.frame_end_labels);
-            });
+                    let h = self.color.hue / 360.;
+                    paint_picker_line(ui, true, rect, h, "H", &mut self.frame_end_labels);
+                    let c = self.color.chroma / CHROMA_MAX;
+                    paint_picker_line(ui, false, rect, c, "", &mut self.frame_end_labels);
+                },
+            );
         });
     }
 
@@ -366,15 +429,28 @@ impl App {
         builder.sizes(Size::remainder(), 4).vertical(|mut strip| {
             strip.cell(|ui| {
                 ui.horizontal_centered(|ui| {
-                    canvas_input(CanavasInputKind::Slider, ui, |response, rect, ui| {
-                        if let Some(pos) = response.interact_pointer_pos() {
-                            self.color.lightness_r =
-                                map(pos.x, (rect.left(), rect.right()), (0., 1.));
-                        }
+                    canvas_input(
+                        CanvasInputKind::Slider,
+                        ui,
+                        |response, key_output, rect, ui| {
+                            if let Some(pos) = response.interact_pointer_pos() {
+                                self.color.lightness_r =
+                                    map(pos.x, (rect.left(), rect.right()), (0., 1.));
+                            }
+                            if let Some(o) = key_output {
+                                value_update(
+                                    &mut self.color.lightness_r,
+                                    o.horizontal,
+                                    0.01,
+                                    0.,
+                                    1.,
+                                );
+                            }
 
-                        self.glow_paint(ui, ProgramKind::Lightness, rect.size());
-                        paint_slider_thumb(ui, rect, self.color.lightness_r, &response);
-                    });
+                            self.glow_paint(ui, ProgramKind::Lightness, rect.size());
+                            paint_slider_thumb(ui, rect, self.color.lightness_r, &response);
+                        },
+                    );
 
                     let get_set = |v: Option<f64>| match v {
                         Some(v) => {
@@ -395,15 +471,28 @@ impl App {
             });
             strip.cell(|ui| {
                 ui.horizontal_centered(|ui| {
-                    canvas_input(CanavasInputKind::Slider, ui, |response, rect, ui| {
-                        if let Some(pos) = response.interact_pointer_pos() {
-                            self.color.chroma =
-                                map(pos.x, (rect.left(), rect.right()), (0., CHROMA_MAX));
-                        }
+                    canvas_input(
+                        CanvasInputKind::Slider,
+                        ui,
+                        |response, key_output, rect, ui| {
+                            if let Some(pos) = response.interact_pointer_pos() {
+                                self.color.chroma =
+                                    map(pos.x, (rect.left(), rect.right()), (0., CHROMA_MAX));
+                            }
+                            if let Some(o) = key_output {
+                                value_update(
+                                    &mut self.color.chroma,
+                                    o.horizontal,
+                                    0.005,
+                                    0.,
+                                    CHROMA_MAX,
+                                );
+                            }
 
-                        self.glow_paint(ui, ProgramKind::Chroma, rect.size());
-                        paint_slider_thumb(ui, rect, self.color.chroma / CHROMA_MAX, &response);
-                    });
+                            self.glow_paint(ui, ProgramKind::Chroma, rect.size());
+                            paint_slider_thumb(ui, rect, self.color.chroma / CHROMA_MAX, &response);
+                        },
+                    );
                     let get_set = |v: Option<f64>| match v {
                         Some(v) => {
                             self.color.chroma = v as f32;
@@ -424,14 +513,22 @@ impl App {
 
             strip.cell(|ui| {
                 ui.horizontal_centered(|ui| {
-                    canvas_input(CanavasInputKind::Slider, ui, |response, rect, ui| {
-                        if let Some(pos) = response.interact_pointer_pos() {
-                            self.color.hue = map(pos.x, (rect.left(), rect.right()), (0., 360.));
-                        }
+                    canvas_input(
+                        CanvasInputKind::Slider,
+                        ui,
+                        |response, key_output, rect, ui| {
+                            if let Some(pos) = response.interact_pointer_pos() {
+                                self.color.hue =
+                                    map(pos.x, (rect.left(), rect.right()), (0., 360.));
+                            }
+                            if let Some(o) = key_output {
+                                value_update(&mut self.color.hue, o.horizontal, 3., 0., 360.);
+                            }
 
-                        self.glow_paint(ui, ProgramKind::Hue, rect.size());
-                        paint_slider_thumb(ui, rect, self.color.hue / 360., &response);
-                    });
+                            self.glow_paint(ui, ProgramKind::Hue, rect.size());
+                            paint_slider_thumb(ui, rect, self.color.hue / 360., &response);
+                        },
+                    );
 
                     let get_set = |v: Option<f64>| match v {
                         Some(v) => {
@@ -453,15 +550,24 @@ impl App {
 
             strip.cell(|ui| {
                 ui.horizontal_centered(|ui| {
-                    canvas_input(CanavasInputKind::Slider, ui, |response, rect, ui| {
-                        if let Some(pos) = response.interact_pointer_pos() {
-                            self.color.alpha = map(pos.x, (rect.left(), rect.right()), (0., 1.));
-                            self.use_alpha = true;
-                        }
+                    canvas_input(
+                        CanvasInputKind::Slider,
+                        ui,
+                        |response, key_output, rect, ui| {
+                            if let Some(pos) = response.interact_pointer_pos() {
+                                self.color.alpha =
+                                    map(pos.x, (rect.left(), rect.right()), (0., 1.));
+                                self.use_alpha = true;
+                            }
+                            if let Some(o) = key_output {
+                                value_update(&mut self.color.alpha, o.horizontal, 0.01, 0., 1.);
+                                self.use_alpha = true;
+                            }
 
-                        self.glow_paint(ui, ProgramKind::Alpha, rect.size());
-                        paint_slider_thumb(ui, rect, self.color.alpha, &response);
-                    });
+                            self.glow_paint(ui, ProgramKind::Alpha, rect.size());
+                            paint_slider_thumb(ui, rect, self.color.alpha, &response);
+                        },
+                    );
                     let get_set = |v: Option<f64>| match v {
                         Some(v) => {
                             self.color.alpha = v as f32;
