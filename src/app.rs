@@ -1,15 +1,15 @@
 use std::sync::{Arc, Mutex};
 
-use crate::gamut::{gamut_clip_preserve_chroma, Oklrcha};
+use crate::gamut::{Oklrcha, gamut_clip_preserve_chroma};
 use crate::gl_programs::{GlowProgram, ProgramKind};
 use crate::{
-    formats::{format_color, parse_color, ColorFormat},
+    formats::{ColorFormat, format_color, parse_color},
     log_startup,
 };
 use crate::{lerp, map};
 use bevy_color::{ColorToPacked, LinearRgba, Oklcha, Srgba};
 use eframe::{
-    egui::{self, ahash::HashMap, Color32, DragValue, Pos2, RichText, Stroke, Vec2},
+    egui::{self, Color32, DragValue, Pos2, RichText, Stroke, Vec2, ahash::HashMap},
     egui_glow,
     glow::{self},
 };
@@ -844,10 +844,13 @@ impl App {
         };
 
         ui.centered_and_justified(|ui| {
+            ui.style_mut().visuals.widgets.inactive.bg_stroke =
+                Stroke::new(2.0, self.fallbacks.cur_egui);
+            ui.style_mut().visuals.widgets.hovered.bg_stroke.width = 2.0;
+            ui.style_mut().visuals.widgets.active.bg_stroke.width = 2.0;
             let button = egui::Button::new(RichText::new(text).size(font_size))
                 .min_size(Vec2::new(max_w, max_h))
-                .wrap_mode(egui::TextWrapMode::Wrap)
-                .stroke(egui::Stroke::new(2.0, self.fallbacks.cur_egui));
+                .wrap_mode(egui::TextWrapMode::Wrap);
             let response = ui.add(button);
 
             if cfg!(target_arch = "wasm32") {
