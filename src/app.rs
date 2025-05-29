@@ -15,7 +15,7 @@ use eframe::{
 };
 use egui::ahash::HashSet;
 use egui::{Align2, EventFilter, Id, Key, Margin, Rect, Response, Sense, Ui, UiBuilder, Widget};
-use egui_extras::{Column, Size, Strip, StripBuilder, TableBuilder};
+use egui_extras::{Column, Size, StripBuilder, TableBuilder};
 use strum::IntoEnumIterator;
 use web_time::{Duration, Instant};
 
@@ -61,12 +61,14 @@ fn setup_egui_config(ctx: &egui::Context) {
         style.spacing.button_padding = egui::vec2(8.0, 4.0);
         style.spacing.icon_width *= 1.8;
         style.spacing.icon_width_inner *= 1.8;
-        let corner_radius = 6.0.into();
+
+        let corner_radius = 4.0.into();
         style.visuals.widgets.open.corner_radius = corner_radius;
         style.visuals.widgets.active.corner_radius = corner_radius;
         style.visuals.widgets.hovered.corner_radius = corner_radius;
         style.visuals.widgets.inactive.corner_radius = corner_radius;
         style.visuals.widgets.noninteractive.corner_radius = corner_radius;
+
         let stroke_width = 1.0;
         style.visuals.widgets.inactive.bg_stroke =
             egui::Stroke::new(stroke_width, style.visuals.widgets.inactive.bg_fill);
@@ -161,16 +163,16 @@ fn canvas_input(
                 7.0,
                 egui::Margin {
                     bottom: 9,
-                    left: 9,
-                    right: 9,
+                    left: 0,
+                    right: 0,
                     top: 0,
                 },
             ),
             CanvasInputKind::Slider => (
                 4.0,
                 egui::Margin {
-                    left: 10,
-                    right: 14,
+                    left: 0,
+                    right: 10,
                     bottom: (h / 8.) as i8,
                     top: (h / 8.) as i8,
                 },
@@ -185,7 +187,7 @@ fn canvas_input(
             .show(ui, |ui| {
                 match kind {
                     CanvasInputKind::Picker => ui.set_width(ui.available_width()),
-                    CanvasInputKind::Slider => ui.set_width(ui.available_width() - 100.),
+                    CanvasInputKind::Slider => ui.set_width(ui.available_width() - 110.),
                 }
                 ui.set_height(ui.available_height());
                 let rect = ui.available_rect_before_wrap();
@@ -200,8 +202,8 @@ fn canvas_final(ui: &mut egui::Ui) -> egui::Frame {
     egui::Frame::canvas(ui.style())
         .inner_margin(5.0)
         .outer_margin(egui::Margin {
-            left: 3,
-            right: 3,
+            left: 0,
+            right: 0,
             bottom: 10,
             top: 4,
         })
@@ -311,7 +313,7 @@ impl App {
         ui.painter().add(cb);
     }
 
-    fn update_pickers(&mut self, mut strip: Strip) {
+    fn update_pickers(&mut self, builder: StripBuilder) {
         let paint_picker_line =
             |ui: &mut egui::Ui,
              vertical: bool,
@@ -357,58 +359,84 @@ impl App {
                 }
             };
 
-        strip.cell(|ui| {
-            let id = canvas_input(
-                CanvasInputKind::Picker,
-                ui,
-                |response, key_output, rect, ui| {
-                    self.focus_hotkey(ui, &response, Key::Num1);
-                    if let Some(pos) = response.interact_pointer_pos() {
-                        self.color.lightness_r = map(pos.x, (rect.left(), rect.right()), (0., 1.));
-                        self.color.chroma =
-                            map(pos.y, (rect.top(), rect.bottom()), (CHROMA_MAX, 0.));
-                    }
-                    if let Some(o) = key_output {
-                        value_update(&mut self.color.lightness_r, o.horizontal, 0.01, 0., 1.);
-                        value_update(&mut self.color.chroma, o.vertical, 0.005, 0., CHROMA_MAX);
-                    }
+        builder
+            .size(Size::remainder())
+            .size(Size::exact(4.))
+            .size(Size::remainder())
+            .horizontal(|mut strip| {
+                strip.cell(|ui| {
+                    let id = canvas_input(
+                        CanvasInputKind::Picker,
+                        ui,
+                        |response, key_output, rect, ui| {
+                            self.focus_hotkey(ui, &response, Key::Num1);
+                            if let Some(pos) = response.interact_pointer_pos() {
+                                self.color.lightness_r =
+                                    map(pos.x, (rect.left(), rect.right()), (0., 1.));
+                                self.color.chroma =
+                                    map(pos.y, (rect.top(), rect.bottom()), (CHROMA_MAX, 0.));
+                            }
+                            if let Some(o) = key_output {
+                                value_update(
+                                    &mut self.color.lightness_r,
+                                    o.horizontal,
+                                    0.01,
+                                    0.,
+                                    1.,
+                                );
+                                value_update(
+                                    &mut self.color.chroma,
+                                    o.vertical,
+                                    0.005,
+                                    0.,
+                                    CHROMA_MAX,
+                                );
+                            }
 
-                    self.glow_paint(ui, ProgramKind::Picker, rect.size());
+                            self.glow_paint(ui, ProgramKind::Picker, rect.size());
 
-                    let l = self.color.lightness_r;
-                    paint_picker_line(ui, true, rect, l, "Lr", &mut self.frame_end_labels);
-                    let c = self.color.chroma / CHROMA_MAX;
-                    paint_picker_line(ui, false, rect, c, "C", &mut self.frame_end_labels);
-                },
-            );
-            self.first_input = id;
-        });
+                            let l = self.color.lightness_r;
+                            paint_picker_line(ui, true, rect, l, "Lr", &mut self.frame_end_labels);
+                            let c = self.color.chroma / CHROMA_MAX;
+                            paint_picker_line(ui, false, rect, c, "C", &mut self.frame_end_labels);
+                        },
+                    );
+                    self.first_input = id;
+                });
+                strip.empty();
+                strip.cell(|ui| {
+                    canvas_input(
+                        CanvasInputKind::Picker,
+                        ui,
+                        |response, key_output, rect, ui| {
+                            self.focus_hotkey(ui, &response, Key::Num2);
+                            if let Some(pos) = response.interact_pointer_pos() {
+                                self.color.hue =
+                                    map(pos.x, (rect.left(), rect.right()), (0., 360.));
+                                self.color.chroma =
+                                    map(pos.y, (rect.top(), rect.bottom()), (CHROMA_MAX, 0.));
+                            }
+                            if let Some(o) = key_output {
+                                value_update(&mut self.color.hue, o.horizontal, 3., 0., 360.);
+                                value_update(
+                                    &mut self.color.chroma,
+                                    o.vertical,
+                                    0.005,
+                                    0.,
+                                    CHROMA_MAX,
+                                );
+                            }
 
-        strip.cell(|ui| {
-            canvas_input(
-                CanvasInputKind::Picker,
-                ui,
-                |response, key_output, rect, ui| {
-                    self.focus_hotkey(ui, &response, Key::Num2);
-                    if let Some(pos) = response.interact_pointer_pos() {
-                        self.color.hue = map(pos.x, (rect.left(), rect.right()), (0., 360.));
-                        self.color.chroma =
-                            map(pos.y, (rect.top(), rect.bottom()), (CHROMA_MAX, 0.));
-                    }
-                    if let Some(o) = key_output {
-                        value_update(&mut self.color.hue, o.horizontal, 3., 0., 360.);
-                        value_update(&mut self.color.chroma, o.vertical, 0.005, 0., CHROMA_MAX);
-                    }
+                            self.glow_paint(ui, ProgramKind::Picker2, rect.size());
 
-                    self.glow_paint(ui, ProgramKind::Picker2, rect.size());
-
-                    let h = self.color.hue / 360.;
-                    paint_picker_line(ui, true, rect, h, "H", &mut self.frame_end_labels);
-                    let c = self.color.chroma / CHROMA_MAX;
-                    paint_picker_line(ui, false, rect, c, "", &mut self.frame_end_labels);
-                },
-            );
-        });
+                            let h = self.color.hue / 360.;
+                            paint_picker_line(ui, true, rect, h, "H", &mut self.frame_end_labels);
+                            let c = self.color.chroma / CHROMA_MAX;
+                            paint_picker_line(ui, false, rect, c, "", &mut self.frame_end_labels);
+                        },
+                    );
+                });
+            });
     }
 
     fn update_sliders(&mut self, builder: StripBuilder) {
@@ -977,11 +1005,10 @@ impl eframe::App for App {
             self.first_frame = false;
         }
 
-        // Set only a minimal top margin in web
         let margin = egui::Margin {
-            left: 20,
-            right: 20,
-            top: if cfg!(target_arch = "wasm32") { 10 } else { 20 },
+            left: 26,
+            right: 26,
+            top: 20,
             bottom: 20,
         };
 
@@ -999,18 +1026,16 @@ impl eframe::App for App {
                 .size(Size::relative(0.18).at_least(110.))
                 .vertical(|mut strip| {
                     strip.strip(|builder| {
-                        builder.sizes(Size::remainder(), 2).horizontal(|strip| {
-                            self.update_pickers(strip);
-                        });
+                        self.update_pickers(builder);
                     });
                     strip.cell(|_| {});
                     strip.strip(|builder| self.update_sliders(builder));
                     strip.cell(|_| {});
                     strip.strip(|builder| {
                         builder
-                            .size(Size::relative(2. / 3.))
-                            .size(Size::exact(10.))
                             .size(Size::remainder())
+                            .size(Size::exact(10.))
+                            .size(Size::relative(0.3).at_least(230.))
                             .horizontal(|mut strip| {
                                 strip.strip(|builder| {
                                     self.update_color_previews(builder);
