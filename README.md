@@ -1,8 +1,8 @@
 # Oklch Color Picker
 
-<img src="https://github.com/user-attachments/assets/7d809284-3c2b-48ed-a558-ed1c7cc41dd5" width="100%" alt="screenshot">
-
 [![Crates.io](https://img.shields.io/crates/v/oklch-color-picker)](https://crates.io/crates/oklch-color-picker)
+
+<img src="https://github.com/user-attachments/assets/e7752d50-4e68-4aab-990a-ff3126952783" width="100%" alt="screenshot">
 
 Try the web demo: https://oklch.eerolehtinen.fi/
 
