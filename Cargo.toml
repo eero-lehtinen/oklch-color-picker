@@ -22,15 +22,15 @@ crate-type = ["cdylib"]
 anyhow = "1.0.90"
 bevy_color = { version = "0.15.1", default-features = false }
 clap = { version = "4.5.17", features = ["derive"] }
-eframe = { version = "0.31.0", default-features = false, features = [
+eframe = { version = "0.32.0", default-features = false, features = [
 	"accesskit",
 	"glow",
 	"wayland",
 	"x11",
 	"persistence",
 ] }
-egui = { version = "0.31.0", default-features = false, features = ["rayon"] }
-egui_extras = { version = "0.31.0", default-features = false, features = [
+egui = { version = "0.32.0", default-features = false, features = ["rayon"] }
+egui_extras = { version = "0.32.0", default-features = false, features = [
 	"serde",
 ] }
 enum-map = "2.7.3"

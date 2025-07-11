@@ -14,7 +14,9 @@ use eframe::{
     glow::{self},
 };
 use egui::ahash::HashSet;
-use egui::{Align2, EventFilter, Id, Key, Margin, Rect, Response, Sense, Ui, UiBuilder, Widget};
+use egui::{
+    Align2, EventFilter, Id, Key, Margin, PopupAnchor, Rect, Response, Sense, Ui, UiBuilder, Widget,
+};
 use egui_extras::{Column, Size, StripBuilder, TableBuilder};
 use strum::IntoEnumIterator;
 use web_time::{Duration, Instant};
@@ -908,14 +910,16 @@ impl App {
                 .copied_notice
                 .is_some_and(|i| i.elapsed() < Duration::from_millis(400))
             {
-                egui::show_tooltip_at_pointer(
-                    ui.ctx(),
+                egui::Tooltip::always_open(
+                    ui.ctx().clone(),
                     ui.layer_id(),
                     egui::Id::new("copied_tooltip"),
-                    |ui| {
-                        ui.label("Copied!");
-                    },
-                );
+                    PopupAnchor::Pointer,
+                )
+                .gap(16.0)
+                .show(|ui| {
+                    ui.label("Copied!");
+                });
             }
         });
     }
