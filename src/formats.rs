@@ -4,10 +4,10 @@ use bevy_color::{Color, ColorToComponents, ColorToPacked, Hsla, LinearRgba, Oklc
 use clap::ValueEnum;
 use strum::IntoEnumIterator;
 use winnow::{
+    ModalResult, Parser,
     ascii::{digit0, digit1, space0, space1},
     combinator::{alt, delimited, opt, separated, terminated},
     error::ParserError,
-    ModalResult, Parser,
 };
 
 #[derive(ValueEnum, Default, Clone, Copy, strum::Display, strum::EnumIter, PartialEq, Eq)]

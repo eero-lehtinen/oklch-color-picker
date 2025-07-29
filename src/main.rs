@@ -3,7 +3,7 @@
 use bevy_color::Oklcha;
 use formats::ColorFormat;
 use gamut::gamut_clip_preserve_chroma;
-use rand::{rngs::SmallRng, Rng, SeedableRng};
+use rand::{Rng, SeedableRng, rngs::SmallRng};
 #[cfg(not(target_arch = "wasm32"))]
 use std::process::ExitCode;
 use std::sync::Arc;
@@ -182,4 +182,3 @@ fn map(input: f32, from: (f32, f32), to: (f32, f32)) -> f32 {
     ((to.1 - to.0) * (input - from.0) / (from.1 - from.0) + to.0)
         .clamp(to.0.min(to.1), to.1.max(to.0))
 }
-

@@ -3,7 +3,7 @@ use eframe::glow::{self, HasContext};
 use egui::Vec2;
 use strum::EnumIter;
 
-use crate::gamut::{lr_to_l, Oklrcha};
+use crate::gamut::{Oklrcha, lr_to_l};
 
 #[derive(Default, Clone, Copy, EnumIter, Hash, PartialEq, Eq, Debug)]
 pub enum ProgramKind {
