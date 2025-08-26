@@ -224,10 +224,10 @@ vec3 okhsv_to_oklab(vec3 hsv) {
     float c = v * c_v;
 
     // then we compensate for both toe and the curved top part of the triangle:
-    float l_vt = toe(l_v);
+    float l_vt = toe_inv(l_v);
     float c_vt = c_v * l_vt / l_v;
 
-    float l_new = toe(l);
+    float l_new = toe_inv(l);
     c = c * l_new / l;
     l = l_new;
 
@@ -247,7 +247,7 @@ vec3 oklab_to_okhsv(vec3 lab) {
 
     float c = sqrt(a * a + b * b);
     if (c == 0.0) {
-        return vec3(0.0, 0.0, toe_inv(l));
+        return vec3(0.0, 0.0, toe(l));
     }
 
     float a_ = a / c;
@@ -268,7 +268,7 @@ vec3 oklab_to_okhsv(vec3 lab) {
     float l_v = t * l;
     float c_v = t * c;
 
-    float l_vt = toe(l_v);
+    float l_vt = toe_inv(l_v);
     float c_vt = c_v * l_vt / l_v;
 
     // we can then use these to invert the step that compensates for the toe and the curved top part of the triangle:
@@ -277,7 +277,7 @@ vec3 oklab_to_okhsv(vec3 lab) {
 
     l /= scale_l;
 
-    l = toe_inv(l);
+    l = toe(l);
 
     // we can now compute v and s:
     float v = l / l_v;
@@ -287,3 +287,6 @@ vec3 oklab_to_okhsv(vec3 lab) {
 }
 
 
+vec3 okhsv_to_srgb(vec3 hsv) {
+	return to_srgb(oklab_to_linear_srgb(okhsv_to_oklab(hsv)));
+}

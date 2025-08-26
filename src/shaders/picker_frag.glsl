@@ -7,17 +7,24 @@ vec4 sampl(vec2 uv) {
 	return oklch_to_srgb(lch);
 }
 
+vec4 sampl2(vec2 uv) {
+	float saturation = uv.x;
+	float value = uv.y;
+	vec3 hsv = vec3(hue / 360., saturation, value);
+	return vec4(okhsv_to_srgb(hsv), 1.);
+}
+
 void main() {
 	vec4 color = vec4(0.);
 	
 	if (supersample == 1u) {
 		vec2 texel_size = 1.0 / size;
 		for (int i = 0; i < 4; i++) {
-			color += sampl(uv + sample_positions[i] * texel_size);
+			color += sampl2(uv + sample_positions[i] * texel_size);
 		}
 		color /= 4.;
 	} else {
-		color = sampl(uv);
+		color = sampl2(uv);
 	}
 
 	color.rgb += screen_space_dither(gl_FragCoord.xy);
