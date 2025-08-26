@@ -9,8 +9,8 @@ void main() {
 		color = oklch_to_srgb(vec3(lightness, chroma, hue));
 	} else {
 		float hue = uv.x;
-		float saturation = 1;
-		float value = 1;
+		float saturation = 0.7;
+		float value = 0.85;
 		color = okhsv_to_srgb(vec3(hue, saturation, value));
 	}
 
