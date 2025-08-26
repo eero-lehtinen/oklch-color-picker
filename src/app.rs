@@ -1,13 +1,13 @@
 use std::sync::{Arc, Mutex};
 
-use crate::gamut::{Oklrcha, gamut_clip_preserve_chroma};
+use crate::gamut::{Okhsva, Oklrcha, gamut_clip_preserve_chroma};
 use crate::gl_programs::{GlowProgram, ProgramKind};
 use crate::{
     formats::{ColorFormat, format_color, parse_color},
     log_startup,
 };
 use crate::{lerp, map};
-use bevy_color::{ColorToPacked, LinearRgba, Oklcha, Srgba};
+use bevy_color::{Color, ColorToComponents, ColorToPacked, LinearRgba, Oklaba, Oklcha, Srgba};
 use eframe::{
     egui::{self, Color32, DragValue, Pos2, RichText, Stroke, Vec2, ahash::HashMap},
     egui_glow,
@@ -18,7 +18,7 @@ use egui::{
     Align2, EventFilter, Id, Key, Margin, PopupAnchor, Rect, Response, Sense, Ui, UiBuilder, Widget,
 };
 use egui_extras::{Column, Size, StripBuilder, TableBuilder};
-use strum::IntoEnumIterator;
+use strum::{EnumDiscriminants, IntoDiscriminant, IntoEnumIterator};
 use web_time::{Duration, Instant};
 
 fn setup_egui_config(ctx: &egui::Context) {
@@ -213,8 +213,7 @@ fn canvas_final(ui: &mut egui::Ui) -> egui::Frame {
 }
 
 pub struct App {
-    prev_color: Oklrcha,
-    color: Oklrcha,
+    colors: CurrentColors,
     format: ColorFormat,
     use_alpha: bool,
     programs: HashMap<ProgramKind, Arc<Mutex<GlowProgram>>>,
@@ -228,11 +227,127 @@ pub struct App {
     show_settings: bool,
 }
 
-#[derive(Default)]
-struct Fallbacks {
-    prev: LinearRgba,
+#[derive(Clone, Debug, EnumDiscriminants)]
+pub enum CurrentColors {
+    Oklrch(Colors<Oklrcha>),
+    Okhsv(Colors<Okhsva>),
+}
+
+impl CurrentColors {
+    fn assign(&mut self, color: Color, prev: bool) {
+        match self {
+            Self::Oklrch(c) => {
+                let color = Oklcha::from(color).into();
+                if prev {
+                    c.prev_color = color;
+                } else {
+                    c.color = color;
+                }
+            }
+            Self::Okhsv(c) => {
+                let color = Oklaba::from(color).into();
+                if prev {
+                    c.prev_color = color;
+                } else {
+                    c.color = color;
+                }
+            }
+        }
+    }
+
+    pub fn values_mut(&mut self) -> [&mut f32; 4] {
+        match self {
+            CurrentColors::Oklrch(c) => {
+                let Oklrcha {
+                    lightness_r,
+                    chroma,
+                    hue,
+                    alpha,
+                } = &mut c.color;
+                [lightness_r, chroma, hue, alpha]
+            }
+            CurrentColors::Okhsv(c) => {
+                let Okhsva {
+                    hue,
+                    saturation,
+                    value,
+                    alpha,
+                } = &mut c.color;
+                [hue, saturation, value, alpha]
+            }
+        }
+    }
+
+    pub fn values(&self) -> [f32; 4] {
+        match self {
+            CurrentColors::Oklrch(c) => {
+                let Oklrcha {
+                    lightness_r,
+                    chroma,
+                    hue,
+                    alpha,
+                } = c.color;
+                [lightness_r, chroma, hue, alpha]
+            }
+            CurrentColors::Okhsv(c) => {
+                let Okhsva {
+                    hue,
+                    saturation,
+                    value,
+                    alpha,
+                } = c.color;
+                [hue, saturation, value, alpha]
+            }
+        }
+    }
+
+    fn values_max(&self) -> [f32; 4] {
+        match self {
+            CurrentColors::Oklrch(_) => [1., CHROMA_MAX, 360., 1.],
+            CurrentColors::Okhsv(_) => [360., 1., 1., 1.],
+        }
+    }
+
+    fn values_name(&self) -> [&'static str; 4] {
+        match self {
+            CurrentColors::Oklrch(_) => ["Lr", "C", "H", "A"],
+            CurrentColors::Okhsv(_) => ["H", "S", "V", "A"],
+        }
+    }
+
+    fn values_precision(&self) -> [f32; 4] {
+        match self {
+            CurrentColors::Oklrch(_) => [0.01, 0.005, 3., 0.01],
+            CurrentColors::Okhsv(_) => [3., 0.01, 0.01, 0.01],
+        }
+    }
+
+    fn prev_color_rgba(&self) -> LinearRgba {
+        match self {
+            CurrentColors::Oklrch(c) => c.prev_color.into(),
+            CurrentColors::Okhsv(c) => c.prev_color.into(),
+        }
+    }
+
+    fn color_rgba(&self) -> LinearRgba {
+        match self {
+            CurrentColors::Oklrch(c) => c.color.into(),
+            CurrentColors::Okhsv(c) => c.color.into(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct Colors<T: Default> {
+    prev_color: T,
+    pub color: T,
+}
+
+#[derive(Default, Clone, Debug)]
+pub struct Fallbacks {
+    pub prev: LinearRgba,
     is_prev_fallback: bool,
-    cur: LinearRgba,
+    pub cur: LinearRgba,
     is_cur_fallback: bool,
     cur_egui: egui::Color32,
 }
@@ -245,7 +360,7 @@ impl App {
 
         let gl = cc.gl.as_ref().unwrap();
 
-        let programs = ProgramKind::iter()
+        let programs = ProgramKind::iter_all()
             .map(|kind| {
                 (
                     kind,
@@ -259,8 +374,14 @@ impl App {
         let color = data.0.into();
 
         Self {
-            prev_color: color,
-            color,
+            // colors: CurrentColors::Oklrch(Colors {
+            //     prev_color: color,
+            //     color,
+            // }),
+            colors: CurrentColors::Okhsv(Colors {
+                prev_color: color,
+                color,
+            }),
             format: data.1,
             use_alpha: data.2,
             programs,
@@ -276,22 +397,32 @@ impl App {
     }
 
     fn calculate_fallbacks(&mut self) {
-        let color_rgba: LinearRgba = Oklcha::from(self.color).into();
-        let prev_color_rgba: LinearRgba = Oklcha::from(self.prev_color).into();
+        let color_rgba: LinearRgba = self.colors.color_rgba();
+        let prev_color_rgba: LinearRgba = self.colors.prev_color_rgba();
 
-        let color_fallback = gamut_clip_preserve_chroma(color_rgba);
+        let is_oklch = self.colors.discriminant() == CurrentColorsDiscriminants::Oklrch;
+
+        let gamut_clip = |color| {
+            if is_oklch {
+                gamut_clip_preserve_chroma(color)
+            } else {
+                LinearRgba::from_f32_array(color.to_f32_array().map(|c| c.clamp(0., 1.)))
+            }
+        };
+
+        let color_fallback = gamut_clip(color_rgba);
 
         let fallback_u8 = Srgba::from(color_fallback).to_u8_array();
         let fallback_egui_color =
             egui::Color32::from_rgb(fallback_u8[0], fallback_u8[1], fallback_u8[2]);
 
-        let prev_color_fallback = gamut_clip_preserve_chroma(prev_color_rgba);
+        let prev_color_fallback = gamut_clip(prev_color_rgba);
 
         self.fallbacks = Fallbacks {
             cur: color_fallback,
-            is_cur_fallback: color_fallback != color_rgba,
+            is_cur_fallback: is_oklch && color_fallback != color_rgba,
             prev: prev_color_fallback,
-            is_prev_fallback: prev_color_fallback != prev_color_rgba,
+            is_prev_fallback: is_oklch && prev_color_fallback != prev_color_rgba,
             cur_egui: fallback_egui_color,
         };
     }
@@ -300,16 +431,15 @@ impl App {
         let p = Arc::clone(&self.programs[&program]);
         let rect = ui.min_rect();
 
-        let color = self.color;
-        let fallback = self.fallbacks.cur;
-        let prev_fallback = self.fallbacks.prev;
+        let colors = self.colors.clone();
+        let fallbacks = self.fallbacks.clone();
 
         let cb = egui::PaintCallback {
             rect,
             callback: Arc::new(egui_glow::CallbackFn::new(move |_info, painter| {
                 p.lock()
                     .unwrap()
-                    .paint(painter.gl(), color, fallback, prev_fallback, size);
+                    .paint(painter.gl(), &colors, &fallbacks, size);
             })),
         };
         ui.painter().add(cb);
@@ -361,84 +491,97 @@ impl App {
                 }
             };
 
-        builder
-            .size(Size::remainder())
-            .size(Size::exact(4.))
-            .size(Size::remainder())
-            .horizontal(|mut strip| {
+        let mut builder = builder.size(Size::remainder());
+        if self.colors.discriminant() == CurrentColorsDiscriminants::Oklrch {
+            builder = builder.size(Size::exact(4.)).size(Size::remainder());
+        }
+
+        builder.horizontal(|mut strip| {
+            for i in 0..2 {
+                if self.colors.discriminant() == CurrentColorsDiscriminants::Okhsv && i == 1 {
+                    continue;
+                }
+                if i != 0 {
+                    strip.empty();
+                }
+
+                let [ix, iy] = if i == 0 {
+                    // (lightness_r, chroma) or (value, saturation)
+                    match self.colors.discriminant() {
+                        CurrentColorsDiscriminants::Oklrch => [0, 1],
+                        CurrentColorsDiscriminants::Okhsv => [1, 2],
+                    }
+                } else {
+                    // (hue, chroma)
+                    [2, 1]
+                };
+
                 strip.cell(|ui| {
                     let id = canvas_input(
                         CanvasInputKind::Picker,
                         ui,
                         |response, key_output, rect, ui| {
-                            self.focus_hotkey(ui, &response, Key::Num1);
+                            let hotkey = [Key::Num1, Key::Num2][i];
+                            self.focus_hotkey(ui, &response, hotkey);
+
+                            let max_x = self.colors.values_max()[ix];
+                            let precision_x = self.colors.values_precision()[ix];
+                            let max_y = self.colors.values_max()[iy];
+                            let precision_y = self.colors.values_precision()[iy];
+
                             if let Some(pos) = response.interact_pointer_pos() {
-                                self.color.lightness_r =
-                                    map(pos.x, (rect.left(), rect.right()), (0., 1.));
-                                self.color.chroma =
-                                    map(pos.y, (rect.top(), rect.bottom()), (CHROMA_MAX, 0.));
+                                *self.colors.values_mut()[ix] =
+                                    map(pos.x, (rect.left(), rect.right()), (0., max_x));
+                                *self.colors.values_mut()[iy] =
+                                    map(pos.y, (rect.top(), rect.bottom()), (max_y, 0.));
                             }
                             if let Some(o) = key_output {
                                 value_update(
-                                    &mut self.color.lightness_r,
+                                    self.colors.values_mut()[ix],
                                     o.horizontal,
-                                    0.01,
+                                    precision_x,
                                     0.,
-                                    1.,
+                                    max_x,
                                 );
                                 value_update(
-                                    &mut self.color.chroma,
+                                    self.colors.values_mut()[iy],
                                     o.vertical,
-                                    0.005,
+                                    precision_y,
                                     0.,
-                                    CHROMA_MAX,
+                                    max_y,
                                 );
                             }
 
-                            self.glow_paint(ui, ProgramKind::Picker, rect.size());
+                            self.glow_paint(ui, ProgramKind::Picker(i as u8), rect.size());
 
-                            let l = self.color.lightness_r;
-                            paint_picker_line(ui, true, rect, l, "Lr", &mut self.frame_end_labels);
-                            let c = self.color.chroma / CHROMA_MAX;
-                            paint_picker_line(ui, false, rect, c, "C", &mut self.frame_end_labels);
+                            paint_picker_line(
+                                ui,
+                                true,
+                                rect,
+                                *self.colors.values_mut()[ix] / max_x,
+                                self.colors.values_name()[ix],
+                                &mut self.frame_end_labels,
+                            );
+                            paint_picker_line(
+                                ui,
+                                false,
+                                rect,
+                                *self.colors.values_mut()[iy] / max_y,
+                                if i == 1 {
+                                    ""
+                                } else {
+                                    self.colors.values_name()[iy]
+                                },
+                                &mut self.frame_end_labels,
+                            );
                         },
                     );
-                    self.first_input = id;
+                    if i == 0 {
+                        self.first_input = id;
+                    }
                 });
-                strip.empty();
-                strip.cell(|ui| {
-                    canvas_input(
-                        CanvasInputKind::Picker,
-                        ui,
-                        |response, key_output, rect, ui| {
-                            self.focus_hotkey(ui, &response, Key::Num2);
-                            if let Some(pos) = response.interact_pointer_pos() {
-                                self.color.hue =
-                                    map(pos.x, (rect.left(), rect.right()), (0., 360.));
-                                self.color.chroma =
-                                    map(pos.y, (rect.top(), rect.bottom()), (CHROMA_MAX, 0.));
-                            }
-                            if let Some(o) = key_output {
-                                value_update(&mut self.color.hue, o.horizontal, 3., 0., 360.);
-                                value_update(
-                                    &mut self.color.chroma,
-                                    o.vertical,
-                                    0.005,
-                                    0.,
-                                    CHROMA_MAX,
-                                );
-                            }
-
-                            self.glow_paint(ui, ProgramKind::Picker2, rect.size());
-
-                            let h = self.color.hue / 360.;
-                            paint_picker_line(ui, true, rect, h, "H", &mut self.frame_end_labels);
-                            let c = self.color.chroma / CHROMA_MAX;
-                            paint_picker_line(ui, false, rect, c, "", &mut self.frame_end_labels);
-                        },
-                    );
-                });
-            });
+            }
+        });
     }
 
     fn update_sliders(&mut self, builder: StripBuilder) {
@@ -478,173 +621,61 @@ impl App {
             ui.add_sized(Vec2::new(12., 26.), label);
         };
         builder.sizes(Size::remainder(), 4).vertical(|mut strip| {
-            strip.cell(|ui| {
-                ui.horizontal_centered(|ui| {
-                    canvas_input(
-                        CanvasInputKind::Slider,
-                        ui,
-                        |response, key_output, rect, ui| {
-                            self.focus_hotkey(ui, &response, Key::Num3);
-                            if let Some(pos) = response.interact_pointer_pos() {
-                                self.color.lightness_r =
-                                    map(pos.x, (rect.left(), rect.right()), (0., 1.));
-                            }
-                            if let Some(o) = key_output {
-                                value_update(
-                                    &mut self.color.lightness_r,
-                                    o.horizontal,
-                                    0.01,
-                                    0.,
-                                    1.,
-                                );
-                            }
+            for i in 0..4 {
+                strip.cell(|ui| {
+                    ui.horizontal_centered(|ui| {
+                        let precision = self.colors.values_precision()[i];
+                        let max = self.colors.values_max()[i];
 
-                            self.glow_paint(ui, ProgramKind::Lightness, rect.size());
-                            paint_slider_thumb(ui, rect, self.color.lightness_r, &response);
-                        },
-                    );
+                        canvas_input(
+                            CanvasInputKind::Slider,
+                            ui,
+                            |response, key_output, rect, ui| {
+                                let hotkey = [Key::Num3, Key::Num4, Key::Num5, Key::Num6][i];
+                                self.focus_hotkey(ui, &response, hotkey);
+                                if let Some(pos) = response.interact_pointer_pos() {
+                                    *self.colors.values_mut()[i] =
+                                        map(pos.x, (rect.left(), rect.right()), (0., max));
+                                }
+                                if let Some(o) = key_output {
+                                    value_update(
+                                        self.colors.values_mut()[i],
+                                        o.horizontal,
+                                        precision,
+                                        0.,
+                                        max,
+                                    );
+                                }
 
-                    let get_set = |v: Option<f64>| match v {
-                        Some(v) => {
-                            self.color.lightness_r = v as f32;
-                            v
-                        }
-                        None => self.color.lightness_r as f64,
-                    };
-                    let response = ui.add_sized(
-                        input_size,
-                        DragValue::from_get_set(get_set)
-                            .speed(1. * 0.001)
-                            .range(0.0..=1.0)
-                            .max_decimals(4),
-                    );
-                    self.text_inputs.insert(response.id);
-                    show_label(ui, "Lr");
+                                self.glow_paint(ui, ProgramKind::Slider(i as u8), rect.size());
+
+                                let val = *self.colors.values_mut()[i] / max;
+                                paint_slider_thumb(ui, rect, val, &response);
+                            },
+                        );
+
+                        let get_set = |v: Option<f64>| match v {
+                            Some(v) => {
+                                *self.colors.values_mut()[i] = v as f32;
+                                if i == 3 {
+                                    self.use_alpha = true;
+                                }
+                                v
+                            }
+                            None => *self.colors.values_mut()[i] as f64,
+                        };
+                        let response = ui.add_sized(
+                            input_size,
+                            DragValue::from_get_set(get_set)
+                                .speed(max * 0.001)
+                                .range(0.0..=max)
+                                .max_decimals(if precision > 1. { 2 } else { 4 }),
+                        );
+                        self.text_inputs.insert(response.id);
+                        show_label(ui, self.colors.values_name()[i]);
+                    });
                 });
-            });
-            strip.cell(|ui| {
-                ui.horizontal_centered(|ui| {
-                    canvas_input(
-                        CanvasInputKind::Slider,
-                        ui,
-                        |response, key_output, rect, ui| {
-                            self.focus_hotkey(ui, &response, Key::Num4);
-                            if let Some(pos) = response.interact_pointer_pos() {
-                                self.color.chroma =
-                                    map(pos.x, (rect.left(), rect.right()), (0., CHROMA_MAX));
-                            }
-                            if let Some(o) = key_output {
-                                value_update(
-                                    &mut self.color.chroma,
-                                    o.horizontal,
-                                    0.005,
-                                    0.,
-                                    CHROMA_MAX,
-                                );
-                            }
-
-                            self.glow_paint(ui, ProgramKind::Chroma, rect.size());
-                            paint_slider_thumb(ui, rect, self.color.chroma / CHROMA_MAX, &response);
-                        },
-                    );
-                    let get_set = |v: Option<f64>| match v {
-                        Some(v) => {
-                            self.color.chroma = v as f32;
-                            v
-                        }
-                        None => self.color.chroma as f64,
-                    };
-                    let reponse = ui.add_sized(
-                        input_size,
-                        DragValue::from_get_set(get_set)
-                            .speed(CHROMA_MAX * 0.001)
-                            .range(0.0..=CHROMA_MAX)
-                            .max_decimals(4),
-                    );
-                    self.text_inputs.insert(reponse.id);
-                    show_label(ui, "C");
-                });
-            });
-
-            strip.cell(|ui| {
-                ui.horizontal_centered(|ui| {
-                    canvas_input(
-                        CanvasInputKind::Slider,
-                        ui,
-                        |response, key_output, rect, ui| {
-                            self.focus_hotkey(ui, &response, Key::Num5);
-                            if let Some(pos) = response.interact_pointer_pos() {
-                                self.color.hue =
-                                    map(pos.x, (rect.left(), rect.right()), (0., 360.));
-                            }
-                            if let Some(o) = key_output {
-                                value_update(&mut self.color.hue, o.horizontal, 3., 0., 360.);
-                            }
-
-                            self.glow_paint(ui, ProgramKind::Hue, rect.size());
-                            paint_slider_thumb(ui, rect, self.color.hue / 360., &response);
-                        },
-                    );
-
-                    let get_set = |v: Option<f64>| match v {
-                        Some(v) => {
-                            self.color.hue = v as f32;
-                            v
-                        }
-                        None => self.color.hue as f64,
-                    };
-                    let response = ui.add_sized(
-                        input_size,
-                        DragValue::from_get_set(get_set)
-                            .speed(360. * 0.001)
-                            .range(0.0..=360.0)
-                            .max_decimals(2),
-                    );
-                    self.text_inputs.insert(response.id);
-                    show_label(ui, "H");
-                });
-            });
-
-            strip.cell(|ui| {
-                ui.horizontal_centered(|ui| {
-                    canvas_input(
-                        CanvasInputKind::Slider,
-                        ui,
-                        |response, key_output, rect, ui| {
-                            self.focus_hotkey(ui, &response, Key::Num6);
-                            if let Some(pos) = response.interact_pointer_pos() {
-                                self.color.alpha =
-                                    map(pos.x, (rect.left(), rect.right()), (0., 1.));
-                                self.use_alpha = true;
-                            }
-                            if let Some(o) = key_output {
-                                value_update(&mut self.color.alpha, o.horizontal, 0.01, 0., 1.);
-                                self.use_alpha = true;
-                            }
-
-                            self.glow_paint(ui, ProgramKind::Alpha, rect.size());
-                            paint_slider_thumb(ui, rect, self.color.alpha, &response);
-                        },
-                    );
-                    let get_set = |v: Option<f64>| match v {
-                        Some(v) => {
-                            self.color.alpha = v as f32;
-                            self.use_alpha = true;
-                            v
-                        }
-                        None => self.color.alpha as f64,
-                    };
-                    let response = ui.add_sized(
-                        input_size,
-                        DragValue::from_get_set(get_set)
-                            .speed(1. * 0.001)
-                            .range(0.0..=1.0)
-                            .max_decimals(4),
-                    );
-                    self.text_inputs.insert(response.id);
-                    show_label(ui, "A");
-                });
-            });
+            }
         });
     }
 
@@ -652,12 +683,7 @@ impl App {
         let mut text = if let Some(text) = self.input_text.remove(&id) {
             if let Some((c, use_alpha)) = parse_color(&text, self.format) {
                 self.use_alpha = use_alpha;
-                let color = if prev {
-                    &mut self.prev_color
-                } else {
-                    &mut self.color
-                };
-                *color = Oklcha::from(c).into();
+                self.colors.assign(c, prev);
             } else {
                 ui.style_mut().visuals.selection.stroke =
                     egui::Stroke::new(2.0, egui::Color32::from_hex("#ce3c47").unwrap());
@@ -839,7 +865,7 @@ impl App {
                 .clicked()
                 && !self.use_alpha
             {
-                self.color.alpha = 1.;
+                *self.colors.values_mut()[3] = 1.;
             }
         }
 

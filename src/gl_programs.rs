@@ -1,20 +1,23 @@
-use bevy_color::{ColorToComponents, LinearRgba, Srgba};
+use bevy_color::{ColorToComponents, Srgba};
 use eframe::glow::{self, HasContext};
 use egui::Vec2;
-use strum::EnumIter;
 
-use crate::gamut::{Oklrcha, toe_inv};
+use crate::app::{CurrentColors, Fallbacks};
 
-#[derive(Default, Clone, Copy, EnumIter, Hash, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 pub enum ProgramKind {
-    #[default]
-    Picker,
-    Picker2,
-    Hue,
-    Lightness,
-    Chroma,
-    Alpha,
+    Picker(u8),
+    Slider(u8),
     Final,
+}
+
+impl ProgramKind {
+    pub fn iter_all() -> impl Iterator<Item = Self> {
+        (0..=1)
+            .map(ProgramKind::Picker)
+            .chain((0..=3).map(ProgramKind::Slider))
+            .chain(std::iter::once(ProgramKind::Final))
+    }
 }
 
 pub struct GlowProgram {
@@ -44,47 +47,26 @@ impl GlowProgram {
             let program = gl.create_program().unwrap();
             let vert_shader_source =
                 concat!(shader_version!(), include_str!("./shaders/quad_vert.glsl"));
-            let frag_shader_source = match kind {
-                ProgramKind::Picker => concat!(
-                    shader_version!(),
-                    include_str!("shaders/functions.glsl"),
-                    include_str!("shaders/picker_frag.glsl")
-                ),
-                ProgramKind::Picker2 => concat!(
-                    shader_version!(),
-                    include_str!("shaders/functions.glsl"),
-                    include_str!("shaders/picker2_frag.glsl")
-                ),
-                ProgramKind::Hue => concat!(
-                    shader_version!(),
-                    include_str!("shaders/functions.glsl"),
-                    include_str!("shaders/hue_frag.glsl")
-                ),
-                ProgramKind::Lightness => concat!(
-                    shader_version!(),
-                    include_str!("shaders/functions.glsl"),
-                    include_str!("shaders/lightness_frag.glsl")
-                ),
-                ProgramKind::Chroma => concat!(
-                    shader_version!(),
-                    include_str!("shaders/functions.glsl"),
-                    include_str!("shaders/chroma_frag.glsl")
-                ),
-                ProgramKind::Alpha => concat!(
-                    shader_version!(),
-                    include_str!("shaders/functions.glsl"),
-                    include_str!("shaders/alpha_frag.glsl")
-                ),
-                ProgramKind::Final => concat!(
-                    shader_version!(),
-                    include_str!("shaders/functions.glsl"),
-                    include_str!("shaders/final_frag.glsl")
-                ),
+            let frag_shader_source_end = match kind {
+                ProgramKind::Picker(0) => include_str!("shaders/picker0_frag.glsl"),
+                ProgramKind::Picker(1) => include_str!("shaders/picker1_frag.glsl"),
+                ProgramKind::Slider(0) => include_str!("shaders/slider0_frag.glsl"),
+                ProgramKind::Slider(1) => include_str!("shaders/slider1_frag.glsl"),
+                ProgramKind::Slider(2) => include_str!("shaders/slider2_frag.glsl"),
+                ProgramKind::Slider(3) => include_str!("shaders/alpha_frag.glsl"),
+                ProgramKind::Final => include_str!("shaders/final_frag.glsl"),
+                _ => panic!("Invalid ProgramKind"),
             };
 
+            let frag_shader_source = [
+                shader_version!(),
+                include_str!("shaders/functions.glsl"),
+                frag_shader_source_end,
+            ]
+            .concat();
             let shader_sources = [
                 (glow::VERTEX_SHADER, vert_shader_source),
-                (glow::FRAGMENT_SHADER, frag_shader_source),
+                (glow::FRAGMENT_SHADER, &frag_shader_source),
             ];
 
             let shaders: Vec<_> = shader_sources
@@ -147,48 +129,39 @@ impl GlowProgram {
     pub fn paint(
         &self,
         gl: &glow::Context,
-        color: Oklrcha,
-        fallback_color: LinearRgba,
-        previous_fallback_color: LinearRgba,
+        colors: &CurrentColors,
+        fallbacks: &Fallbacks,
         size: Vec2,
     ) {
         unsafe {
             let uni_loc = |name: &str| gl.get_uniform_location(self.program, name);
-            let set_uni_f32 = |name: &str, value: f32| {
-                gl.uniform_1_f32(uni_loc(name).as_ref(), value);
-            };
             gl.use_program(Some(self.program));
 
             gl.uniform_1_u32(uni_loc("supersample").as_ref(), self.supersample);
             gl.uniform_2_f32(uni_loc("size").as_ref(), size.x, size.y);
+            gl.uniform_1_u32(
+                uni_loc("mode").as_ref(),
+                matches!(colors, CurrentColors::Okhsv(..)) as u32,
+            );
             match self.kind {
-                ProgramKind::Picker => {
-                    set_uni_f32("hue", color.hue);
-                }
-                ProgramKind::Picker2 => set_uni_f32("lightness", toe_inv(color.lightness_r)),
-                ProgramKind::Hue => {}
-                ProgramKind::Lightness => {
-                    set_uni_f32("hue", color.hue);
-                    set_uni_f32("chroma", color.chroma);
-                }
-                ProgramKind::Chroma => {
-                    set_uni_f32("hue", color.hue);
-                    set_uni_f32("lightness", toe_inv(color.lightness_r));
-                }
-                ProgramKind::Alpha => {
+                // Alpha
+                ProgramKind::Slider(3) => {
                     gl.uniform_3_f32_slice(
                         uni_loc("color").as_ref(),
-                        &Srgba::from(fallback_color).to_f32_array_no_alpha()[..],
+                        &Srgba::from(fallbacks.cur).to_f32_array_no_alpha()[..],
                     );
+                }
+                ProgramKind::Picker(_) | ProgramKind::Slider(_) => {
+                    gl.uniform_3_f32_slice(uni_loc("values").as_ref(), &colors.values()[0..3]);
                 }
                 ProgramKind::Final => {
                     gl.uniform_4_f32_slice(
                         uni_loc("prev_color").as_ref(),
-                        &Srgba::from(previous_fallback_color).to_f32_array()[..],
+                        &Srgba::from(fallbacks.prev).to_f32_array()[..],
                     );
                     gl.uniform_4_f32_slice(
                         uni_loc("color").as_ref(),
-                        &Srgba::from(fallback_color).to_f32_array()[..],
+                        &Srgba::from(fallbacks.cur).to_f32_array()[..],
                     );
                 }
             }

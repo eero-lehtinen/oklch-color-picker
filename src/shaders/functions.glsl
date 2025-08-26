@@ -4,6 +4,7 @@ out vec4 FragColor;
 
 uniform vec2 size;
 uniform uint supersample;
+uniform uint mode; // 0: oklch, 1: okhsv
 
 in vec2 uv;
 in vec2 uv2;
@@ -287,6 +288,6 @@ vec3 oklab_to_okhsv(vec3 lab) {
 }
 
 
-vec3 okhsv_to_srgb(vec3 hsv) {
-	return to_srgb(oklab_to_linear_srgb(okhsv_to_oklab(hsv)));
+vec4 okhsv_to_srgb(vec3 hsv) {
+	return vec4(to_srgb(oklab_to_linear_srgb(okhsv_to_oklab(hsv))), 1.0);
 }

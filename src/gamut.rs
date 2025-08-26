@@ -252,7 +252,7 @@ pub fn to_st((l_cusp, c_cusp): (f32, f32)) -> (f32, f32) {
     (s_cusp, t_cusp)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Oklrcha {
     pub lightness_r: f32,
     pub chroma: f32,
@@ -293,25 +293,36 @@ impl From<Oklcha> for Oklrcha {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Okhsv {
-    pub h: f32,
-    pub s: f32,
-    pub v: f32,
-    pub alpha: f32,
-}
-
-impl Okhsv {
-    pub fn new(h: f32, s: f32, v: f32, alpha: f32) -> Self {
-        Self { h, s, v, alpha }
+impl From<Oklrcha> for LinearRgba {
+    fn from(oklrcha: Oklrcha) -> Self {
+        LinearRgba::from(Oklcha::from(oklrcha))
     }
 }
 
-impl From<Okhsv> for Oklaba {
-    fn from(okhsv: Okhsv) -> Self {
-        let h = okhsv.h;
-        let s = okhsv.s;
-        let v = okhsv.v;
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct Okhsva {
+    pub hue: f32,
+    pub saturation: f32,
+    pub value: f32,
+    pub alpha: f32,
+}
+
+impl Okhsva {
+    pub fn new(hue: f32, saturation: f32, value: f32, alpha: f32) -> Self {
+        Self {
+            hue,
+            saturation,
+            value,
+            alpha,
+        }
+    }
+}
+
+impl From<Okhsva> for Oklaba {
+    fn from(okhsv: Okhsva) -> Self {
+        let h = okhsv.hue / 360.;
+        let s = okhsv.saturation;
+        let v = okhsv.value;
 
         let a_ = (2. * PI * h).cos();
         let b_ = (2. * PI * h).sin();
@@ -353,11 +364,11 @@ impl From<Okhsv> for Oklaba {
     }
 }
 
-impl From<Oklaba> for Okhsv {
+impl From<Oklaba> for Okhsva {
     fn from(oklaba: Oklaba) -> Self {
         let c = (oklaba.a * oklaba.a + oklaba.b * oklaba.b).sqrt();
         if c == 0. {
-            return Okhsv::new(0., 0., toe(oklaba.lightness), oklaba.alpha);
+            return Okhsva::new(0., 0., toe(oklaba.lightness), oklaba.alpha);
         }
 
         let a_ = oklaba.a / c;
@@ -400,6 +411,18 @@ impl From<Oklaba> for Okhsv {
         let v = l / l_v;
         let s = (s_0 + t_max) * c_v / ((t_max * s_0) + t_max * k * c_v);
 
-        Okhsv::new(h, s, v, oklaba.alpha)
+        Okhsva::new(h * 360., s, v, oklaba.alpha)
+    }
+}
+
+impl From<Okhsva> for LinearRgba {
+    fn from(okhsv: Okhsva) -> Self {
+        Oklaba::from(okhsv).into()
+    }
+}
+
+impl From<Oklcha> for Okhsva {
+    fn from(oklcha: Oklcha) -> Self {
+        Oklaba::from(oklcha).into()
     }
 }
