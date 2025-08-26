@@ -226,6 +226,7 @@ pub fn gamut_clip_preserve_chroma(rgba: LinearRgba) -> LinearRgba {
     result
 }
 
+/// Toe function for L_r
 pub fn lr_to_l(lr: f32) -> f32 {
     const k1: f32 = 0.206;
     const k2: f32 = 0.03;
@@ -233,6 +234,7 @@ pub fn lr_to_l(lr: f32) -> f32 {
     (lr * (lr + k1)) / (k3 * (lr + k2))
 }
 
+/// Inverse toe function for L_r
 pub fn l_to_lr(l: f32) -> f32 {
     const k1: f32 = 0.206;
     const k2: f32 = 0.03;
