@@ -10,7 +10,7 @@ Try the web demo: https://oklch.eerolehtinen.fi/
 
 ## Features
 
-- Takes an input color as a cli argument and ouputs the edited color to stdout
+- Takes an input color as a cli argument and outputs the edited color to stdout
 - Uses a perceptual colorspace (Oklch) to allow intuitive editing
   - Consists of lightness, chroma and hue
   - Motivation: [An article by the Oklab creator](https://bottosson.github.io/posts/oklab/)
@@ -38,3 +38,4 @@ cargo install oklch-color-picker --locked
 Check out the neovim plugin that this picker was made for [eero-lehtinen/oklch-color-picker.nvim](https://github.com/eero-lehtinen/oklch-color-picker.nvim).
 
 Inspired by https://oklch.com/.
+
