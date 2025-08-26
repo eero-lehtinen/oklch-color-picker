@@ -2,7 +2,7 @@ uniform float hue;
 
 vec4 sampl(vec2 uv) {
 	float chroma = uv.y * CHROMA_MAX;
-	float lightness = lr_to_l(uv.x);
+	float lightness = toe_inv(uv.x);
 	vec3 lch = vec3(lightness, chroma, hue / 360.);
 	return oklch_to_srgb(lch);
 }

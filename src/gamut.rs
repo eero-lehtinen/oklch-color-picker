@@ -1,4 +1,10 @@
+//! Code adapted from
+//! https://bottosson.github.io/posts/colorpicker
+//! https://bottosson.github.io/posts/gamutclipping
+
 #![allow(non_upper_case_globals)]
+
+use std::f32::consts::PI;
 
 use bevy_color::{LinearRgba, Oklaba, Oklcha};
 
@@ -226,20 +232,24 @@ pub fn gamut_clip_preserve_chroma(rgba: LinearRgba) -> LinearRgba {
     result
 }
 
-/// Toe function for L_r
-pub fn lr_to_l(lr: f32) -> f32 {
-    const k1: f32 = 0.206;
-    const k2: f32 = 0.03;
-    const k3: f32 = (1. + k1) / (1. + k2);
-    (lr * (lr + k1)) / (k3 * (lr + k2))
+const K1: f32 = 0.206;
+const K2: f32 = 0.03;
+const K3: f32 = (1. + K1) / (1. + K2);
+
+/// L_r to L
+pub fn toe_inv(lr: f32) -> f32 {
+    (lr * (lr + K1)) / (K3 * (lr + K2))
 }
 
-/// Inverse toe function for L_r
-pub fn l_to_lr(l: f32) -> f32 {
-    const k1: f32 = 0.206;
-    const k2: f32 = 0.03;
-    const k3: f32 = (1. + k1) / (1. + k2);
-    0.5 * (k3 * l - k1 + ((k3 * l - k1) * (k3 * l - k1) + 4. * k2 * k3 * l).sqrt())
+/// L to L_r
+pub fn toe(l: f32) -> f32 {
+    0.5 * (K3 * l - K1 + ((K3 * l - K1) * (K3 * l - K1) + 4. * K2 * K3 * l).sqrt())
+}
+
+pub fn to_st((l_cusp, c_cusp): (f32, f32)) -> (f32, f32) {
+    let s_cusp = c_cusp / l_cusp;
+    let t_cusp = c_cusp / (1. - l_cusp);
+    (s_cusp, t_cusp)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -264,7 +274,7 @@ impl Oklrcha {
 impl From<Oklrcha> for Oklcha {
     fn from(oklrcha: Oklrcha) -> Self {
         Oklcha::new(
-            lr_to_l(oklrcha.lightness_r),
+            toe_inv(oklrcha.lightness_r),
             oklrcha.chroma,
             oklrcha.hue,
             oklrcha.alpha,
@@ -275,10 +285,121 @@ impl From<Oklrcha> for Oklcha {
 impl From<Oklcha> for Oklrcha {
     fn from(oklcha: Oklcha) -> Self {
         Oklrcha {
-            lightness_r: l_to_lr(oklcha.lightness),
+            lightness_r: toe(oklcha.lightness),
             chroma: oklcha.chroma,
             hue: oklcha.hue,
             alpha: oklcha.alpha,
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Okhsv {
+    pub h: f32,
+    pub s: f32,
+    pub v: f32,
+    pub alpha: f32,
+}
+
+impl Okhsv {
+    pub fn new(h: f32, s: f32, v: f32, alpha: f32) -> Self {
+        Self { h, s, v, alpha }
+    }
+}
+
+impl From<Okhsv> for Oklaba {
+    fn from(okhsv: Okhsv) -> Self {
+        let h = okhsv.h;
+        let s = okhsv.s;
+        let v = okhsv.v;
+
+        let a_ = (2. * PI * h).cos();
+        let b_ = (2. * PI * h).sin();
+
+        let (l_cusp, c_cusp) = find_cusp(a_, b_);
+
+        let (s_max, t_max) = to_st((l_cusp, c_cusp));
+
+        let s_0 = 0.5;
+        let k = 1. - s_0 / s_max;
+
+        // L, C when v==1:
+        let l_v = 1. - s * s_0 / (s_0 + t_max - t_max * k * s);
+        let c_v = s * t_max * s_0 / (s_0 + t_max - t_max * k * s);
+
+        let mut l = v * l_v;
+        let mut c = v * c_v;
+
+        // then we compensate for both toe and the curved top part of the triangle:
+        let l_vt = toe_inv(l_v);
+        let c_vt = c_v * l_vt / l_v;
+
+        let l_new = toe_inv(l);
+        c = c * l_new / l;
+        l = l_new;
+
+        let rgb_scale = LinearRgba::from(Oklaba::new(l_vt, a_ * c_vt, b_ * c_vt, 1.0));
+        let scale_l = (1.
+            / rgb_scale
+                .red
+                .max(rgb_scale.green)
+                .max(rgb_scale.blue.max(0.)))
+        .cbrt();
+
+        l *= scale_l;
+        c *= scale_l;
+
+        Oklaba::new(l, c * a_, c * b_, okhsv.alpha)
+    }
+}
+
+impl From<Oklaba> for Okhsv {
+    fn from(oklaba: Oklaba) -> Self {
+        let c = (oklaba.a * oklaba.a + oklaba.b * oklaba.b).sqrt();
+        if c == 0. {
+            return Okhsv::new(0., 0., toe(oklaba.lightness), oklaba.alpha);
+        }
+
+        let a_ = oklaba.a / c;
+        let b_ = oklaba.b / c;
+
+        let mut l = oklaba.lightness;
+        let h = 0.5 + 0.5 * (-oklaba.b).atan2(-oklaba.a) / PI;
+
+        let (l_cusp, c_cusp) = find_cusp(a_, b_);
+        let (s_max, t_max) = to_st((l_cusp, c_cusp));
+        let s_0 = 0.5;
+        let k = 1.0 - s_0 / s_max;
+
+        // first we find L_v, C_v, L_vt and C_vt
+        let t = t_max / (c + l * t_max);
+        let l_v = t * l;
+        let c_v = t * c;
+
+        let l_vt = toe_inv(l_v);
+        let c_vt = c_v * l_vt / l_v;
+
+        // we can then use these to invert the step that compensates for the toe and the curved top part of the triangle:
+        let rgb_scale = LinearRgba::from(Oklaba::new(l_vt, a_ * c_vt, b_ * c_vt, 1.0));
+        let scale_l = (1.0
+            / rgb_scale
+                .red
+                .max(rgb_scale.green)
+                .max(rgb_scale.blue.max(0.0)))
+        .cbrt();
+
+        l /= scale_l;
+
+        // These calculations exist in the source but aren't used for some reason in the end.
+        // c /= scale_l;
+        // c = c * toe(l) / l;
+
+        l = toe(l);
+
+        // we can now compute v and s:
+        let v = l / l_v;
+        let s = (s_0 + t_max) * c_v / ((t_max * s_0) + t_max * k * c_v);
+
+        Okhsv::new(h, s, v, oklaba.alpha)
     }
 }

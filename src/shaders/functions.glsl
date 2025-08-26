@@ -77,14 +77,14 @@ vec4 blend(vec4 below, vec4 above) {
 	return vec4((above.rgb * above.a + below.rgb * below.a * (1. - above.a)) / a, a);
 }
 
-float lr_to_l(float lr) {
+float toe_inv(float lr) {
 	float k1 = 0.206;
 	float k2 = 0.03;
 	float k3 = (1. + k1) / (1. + k2);
 	return (lr * (lr + k1)) / (k3 * (lr + k2));
 }
 
-float l_to_lr(float l) {
+float toe(float l) {
 	float k1 = 0.206;
 	float k2 = 0.03;
 	float k3 = (1. + k1) / (1. + k2);
@@ -190,6 +190,100 @@ vec2 find_cusp(float a, float b) {
     float l_cusp = pow(1.0 / max(rgb_at_max.r, max(rgb_at_max.g, rgb_at_max.b)), 1.0/3.0);
     float c_cusp = l_cusp * s_cusp;
     return vec2(l_cusp, c_cusp);
+}
+
+vec2 to_st(vec2 cusp) {
+    float l_cusp = cusp.x;
+    float c_cusp = cusp.y;
+    float s_cusp = c_cusp / l_cusp;
+    float t_cusp = c_cusp / (1.0 - l_cusp);
+    return vec2(s_cusp, t_cusp);
+}
+
+vec3 okhsv_to_oklab(vec3 hsv) {
+    float h = hsv.x;
+    float s = hsv.y;
+    float v = hsv.z;
+
+    float a_ = cos(2.0 * PI * h);
+    float b_ = sin(2.0 * PI * h);
+
+    vec2 cusp = find_cusp(a_, b_);
+    vec2 st_max = to_st(cusp);
+    float s_max = st_max.x;
+    float t_max = st_max.y;
+
+    float s_0 = 0.5;
+    float k = 1.0 - s_0 / s_max;
+
+    // L, C when v==1:
+    float l_v = 1.0 - s * s_0 / (s_0 + t_max - t_max * k * s);
+    float c_v = s * t_max * s_0 / (s_0 + t_max - t_max * k * s);
+
+    float l = v * l_v;
+    float c = v * c_v;
+
+    // then we compensate for both toe and the curved top part of the triangle:
+    float l_vt = toe(l_v);
+    float c_vt = c_v * l_vt / l_v;
+
+    float l_new = toe(l);
+    c = c * l_new / l;
+    l = l_new;
+
+    vec3 rgb_scale = oklab_to_linear_srgb(vec3(l_vt, a_ * c_vt, b_ * c_vt));
+    float scale_l = pow(1.0 / max(max(rgb_scale.r, rgb_scale.g), max(rgb_scale.b, 0.0)), 1.0/3.0);
+
+    l *= scale_l;
+    c *= scale_l;
+
+    return vec3(l, c * a_, c * b_);
+}
+
+vec3 oklab_to_okhsv(vec3 lab) {
+    float l = lab.x;
+    float a = lab.y;
+    float b = lab.z;
+
+    float c = sqrt(a * a + b * b);
+    if (c == 0.0) {
+        return vec3(0.0, 0.0, toe_inv(l));
+    }
+
+    float a_ = a / c;
+    float b_ = b / c;
+
+    float h = 0.5 + 0.5 * atan(-b, -a) / PI;
+
+    vec2 cusp = find_cusp(a_, b_);
+    vec2 st_max = to_st(cusp);
+    float s_max = st_max.x;
+    float t_max = st_max.y;
+
+    float s_0 = 0.5;
+    float k = 1.0 - s_0 / s_max;
+
+    // first we find L_v, C_v, L_vt and C_vt
+    float t = t_max / (c + l * t_max);
+    float l_v = t * l;
+    float c_v = t * c;
+
+    float l_vt = toe(l_v);
+    float c_vt = c_v * l_vt / l_v;
+
+    // we can then use these to invert the step that compensates for the toe and the curved top part of the triangle:
+    vec3 rgb_scale = oklab_to_linear_srgb(vec3(l_vt, a_ * c_vt, b_ * c_vt));
+    float scale_l = pow(1.0 / max(max(rgb_scale.r, rgb_scale.g), max(rgb_scale.b, 0.0)), 1.0/3.0);
+
+    l /= scale_l;
+
+    l = toe_inv(l);
+
+    // we can now compute v and s:
+    float v = l / l_v;
+    float s = (s_0 + t_max) * c_v / ((t_max * s_0) + t_max * k * c_v);
+
+    return vec3(h, s, v);
 }
 
 

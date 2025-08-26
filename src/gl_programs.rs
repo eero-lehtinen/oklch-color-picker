@@ -3,7 +3,7 @@ use eframe::glow::{self, HasContext};
 use egui::Vec2;
 use strum::EnumIter;
 
-use crate::gamut::{Oklrcha, lr_to_l};
+use crate::gamut::{Oklrcha, toe_inv};
 
 #[derive(Default, Clone, Copy, EnumIter, Hash, PartialEq, Eq, Debug)]
 pub enum ProgramKind {
@@ -165,7 +165,7 @@ impl GlowProgram {
                 ProgramKind::Picker => {
                     set_uni_f32("hue", color.hue);
                 }
-                ProgramKind::Picker2 => set_uni_f32("lightness", lr_to_l(color.lightness_r)),
+                ProgramKind::Picker2 => set_uni_f32("lightness", toe_inv(color.lightness_r)),
                 ProgramKind::Hue => {}
                 ProgramKind::Lightness => {
                     set_uni_f32("hue", color.hue);
@@ -173,7 +173,7 @@ impl GlowProgram {
                 }
                 ProgramKind::Chroma => {
                     set_uni_f32("hue", color.hue);
-                    set_uni_f32("lightness", lr_to_l(color.lightness_r));
+                    set_uni_f32("lightness", toe_inv(color.lightness_r));
                 }
                 ProgramKind::Alpha => {
                     gl.uniform_3_f32_slice(
