@@ -23,6 +23,9 @@ Try the web demo: https://oklch.eerolehtinen.fi/
   - Any list of 3 or 4 numbers can be used as a color (e.g. `0.5, 0.5, 0.5` or `120, 120, 120, 255`)
 - Hardware accelerated for maximum smoothness and high resolutions
 
+**COLOR ACCURACY NOTE:** 
+This application doesn't properly interpret display color gamuts wider than sRGB. E.g., if your display uses [Display P3](https://en.wikipedia.org/wiki/DCI-P3) (common with Apple devices) or [Adobe RGB](https://en.wikipedia.org/wiki/Adobe_RGB_color_space), this application shows colors more vibrantly than intended.
+
 ## Installation
 
 Download from [Releases](https://github.com/eero-lehtinen/oklch-color-picker/releases).
@@ -38,4 +41,5 @@ cargo install oklch-color-picker --locked
 Check out the neovim plugin that this picker was made for [eero-lehtinen/oklch-color-picker.nvim](https://github.com/eero-lehtinen/oklch-color-picker.nvim).
 
 Inspired by https://oklch.com/.
+
 
