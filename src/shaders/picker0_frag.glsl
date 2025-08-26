@@ -3,7 +3,7 @@ uniform vec3 values;
 vec4 sample_oklch(vec2 uv) {
 	float chroma = uv.y * CHROMA_MAX;
 	float lightness = toe_inv(uv.x);
-	float hue = values.z / 360;
+	float hue = values.z / 360.;
 	vec3 lch = vec3(lightness, chroma, hue);
 	return oklch_to_srgb(lch);
 }

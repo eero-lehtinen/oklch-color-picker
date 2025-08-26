@@ -426,3 +426,15 @@ impl From<Oklcha> for Okhsva {
         Oklaba::from(oklcha).into()
     }
 }
+
+impl From<Oklrcha> for Okhsva {
+    fn from(oklrcha: Oklrcha) -> Self {
+        Okhsva::from(Oklaba::from(Oklcha::from(oklrcha)))
+    }
+}
+
+impl From<Okhsva> for Oklrcha {
+    fn from(okhsv: Okhsva) -> Self {
+        Oklrcha::from(Oklcha::from(Oklaba::from(okhsv)))
+    }
+}

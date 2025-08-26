@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use bevy_color::{ColorToComponents, Srgba};
 use eframe::glow::{self, HasContext};
 use egui::Vec2;
@@ -27,26 +29,21 @@ pub struct GlowProgram {
     supersample: u32,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-macro_rules! shader_version {
-    () => {
+fn shader_version() -> &'static str {
+    if cfg!(target_arch = "wasm32") {
+        "#version 300 es\n"
+    } else {
         "#version 330\n"
-    };
+    }
 }
 
-#[cfg(target_arch = "wasm32")]
-macro_rules! shader_version {
-    () => {
-        "#version 300 es\n"
-    };
-}
+static VERT_SHADER_SOURCE: LazyLock<String> =
+    LazyLock::new(|| [shader_version(), include_str!("./shaders/quad_vert.glsl")].concat());
 
 impl GlowProgram {
     pub fn new(gl: &glow::Context, egui_ctx: &egui::Context, kind: ProgramKind) -> Self {
         unsafe {
             let program = gl.create_program().unwrap();
-            let vert_shader_source =
-                concat!(shader_version!(), include_str!("./shaders/quad_vert.glsl"));
             let frag_shader_source_end = match kind {
                 ProgramKind::Picker(0) => include_str!("shaders/picker0_frag.glsl"),
                 ProgramKind::Picker(1) => include_str!("shaders/picker1_frag.glsl"),
@@ -57,15 +54,21 @@ impl GlowProgram {
                 ProgramKind::Final => include_str!("shaders/final_frag.glsl"),
                 _ => panic!("Invalid ProgramKind"),
             };
+            let define = if cfg!(target_arch = "wasm32") {
+                ""
+            } else {
+                "#define OUTPUT_LINEAR_COLOR\n"
+            };
 
             let frag_shader_source = [
-                shader_version!(),
+                shader_version(),
+                define,
                 include_str!("shaders/functions.glsl"),
                 frag_shader_source_end,
             ]
             .concat();
             let shader_sources = [
-                (glow::VERTEX_SHADER, vert_shader_source),
+                (glow::VERTEX_SHADER, &*VERT_SHADER_SOURCE),
                 (glow::FRAGMENT_SHADER, &frag_shader_source),
             ];
 
@@ -134,8 +137,12 @@ impl GlowProgram {
         size: Vec2,
     ) {
         unsafe {
-            let uni_loc = |name: &str| gl.get_uniform_location(self.program, name);
+            if !cfg!(target_arch = "wasm32") {
+                gl.enable(glow::FRAMEBUFFER_SRGB);
+            }
             gl.use_program(Some(self.program));
+
+            let uni_loc = |name: &str| gl.get_uniform_location(self.program, name);
 
             gl.uniform_1_u32(uni_loc("supersample").as_ref(), self.supersample);
             gl.uniform_2_f32(uni_loc("size").as_ref(), size.x, size.y);
@@ -157,11 +164,11 @@ impl GlowProgram {
                 ProgramKind::Final => {
                     gl.uniform_4_f32_slice(
                         uni_loc("prev_color").as_ref(),
-                        &Srgba::from(fallbacks.prev).to_f32_array()[..],
+                        &fallbacks.prev.to_f32_array()[..],
                     );
                     gl.uniform_4_f32_slice(
                         uni_loc("color").as_ref(),
-                        &Srgba::from(fallbacks.cur).to_f32_array()[..],
+                        &fallbacks.cur.to_f32_array()[..],
                     );
                 }
             }

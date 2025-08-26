@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 use crate::gamut::{Okhsva, Oklrcha, gamut_clip_preserve_chroma};
@@ -7,7 +8,8 @@ use crate::{
     log_startup,
 };
 use crate::{lerp, map};
-use bevy_color::{Color, ColorToComponents, ColorToPacked, LinearRgba, Oklaba, Oklcha, Srgba};
+use bevy_color::{Color, ColorToPacked, LinearRgba, Oklaba, Oklcha, Srgba};
+use eframe::Storage;
 use eframe::{
     egui::{self, Color32, DragValue, Pos2, RichText, Stroke, Vec2, ahash::HashMap},
     egui_glow,
@@ -15,10 +17,11 @@ use eframe::{
 };
 use egui::ahash::HashSet;
 use egui::{
-    Align2, EventFilter, Id, Key, Margin, PopupAnchor, Rect, Response, Sense, Ui, UiBuilder, Widget,
+    Align2, Button, EventFilter, Id, Key, Margin, PopupAnchor, Rect, Response, Sense, Ui,
+    UiBuilder, Widget,
 };
 use egui_extras::{Column, Size, StripBuilder, TableBuilder};
-use strum::{EnumDiscriminants, IntoDiscriminant, IntoEnumIterator};
+use strum::{Display, EnumDiscriminants, EnumString, IntoDiscriminant, IntoEnumIterator};
 use web_time::{Duration, Instant};
 
 fn setup_egui_config(ctx: &egui::Context) {
@@ -115,6 +118,7 @@ struct CanvasInputKeyOutput {
 
 fn canvas_input(
     kind: CanvasInputKind,
+    center: bool,
     ui: &mut Ui,
     add_contents: impl FnOnce(Response, Option<CanvasInputKeyOutput>, Rect, &mut Ui),
 ) -> Id {
@@ -122,7 +126,7 @@ fn canvas_input(
         let h = ui.available_height();
         let response = ui.response();
         ui.style_mut().visuals.widgets.inactive.bg_stroke.color = MID_GRAY.into();
-        let visuals = ui.style().interact(&response);
+        let bg_stroke = ui.style().interact(&response).bg_stroke;
 
         let mut key_output = None;
 
@@ -162,16 +166,16 @@ fn canvas_input(
 
         let (inner_margin, outer_margin) = match kind {
             CanvasInputKind::Picker => (
-                7.0,
+                7,
                 egui::Margin {
                     bottom: 9,
                     left: 0,
                     right: 0,
-                    top: 0,
+                    top: 9,
                 },
             ),
             CanvasInputKind::Slider => (
-                4.0,
+                4,
                 egui::Margin {
                     left: 0,
                     right: 10,
@@ -181,20 +185,31 @@ fn canvas_input(
             ),
         };
 
-        egui::Frame::canvas(ui.style())
-            .stroke(visuals.bg_stroke)
-            .inner_margin(inner_margin)
-            .outer_margin(outer_margin)
-            .fill(MID_GRAY.into())
-            .show(ui, |ui| {
-                match kind {
-                    CanvasInputKind::Picker => ui.set_width(ui.available_width()),
-                    CanvasInputKind::Slider => ui.set_width(ui.available_width() - 110.),
-                }
-                ui.set_height(ui.available_height());
-                let rect = ui.available_rect_before_wrap();
-                add_contents(response, key_output, rect, ui);
-            })
+        let side_margin = if center {
+            let size = ui.available_size();
+            let canvas_size = Vec2::new(size.x.min(size.y * 1.5), size.y);
+            (size.x - canvas_size.x) / 2.
+        } else {
+            0.
+        };
+        ui.horizontal_centered(|ui| {
+            ui.allocate_space(Vec2::new(side_margin, 0.));
+            egui::Frame::canvas(ui.style())
+                .stroke(bg_stroke)
+                .inner_margin(inner_margin)
+                .outer_margin(outer_margin)
+                .fill(MID_GRAY.into())
+                .show(ui, |ui| {
+                    let w = (ui.available_width() - inner_margin as f32 * 2. - side_margin).max(0.);
+                    match kind {
+                        CanvasInputKind::Picker => ui.set_width(w),
+                        CanvasInputKind::Slider => ui.set_width((w - 110.).max(10.)),
+                    }
+                    ui.set_height(ui.available_height());
+                    let rect = ui.available_rect_before_wrap();
+                    add_contents(response, key_output, rect, ui);
+                })
+        })
     })
     .response
     .id
@@ -228,12 +243,53 @@ pub struct App {
 }
 
 #[derive(Clone, Debug, EnumDiscriminants)]
+#[strum_discriminants(derive(EnumString, Display))]
 pub enum CurrentColors {
     Oklrch(Colors<Oklrcha>),
     Okhsv(Colors<Okhsva>),
 }
 
 impl CurrentColors {
+    fn new(mode: CurrentColorsDiscriminants, color: Oklcha) -> Self {
+        match mode {
+            CurrentColorsDiscriminants::Oklrch => {
+                let color = color.into();
+                Self::Oklrch(Colors {
+                    prev_color: color,
+                    color,
+                })
+            }
+            CurrentColorsDiscriminants::Okhsv => {
+                let color = color.into();
+                Self::Okhsv(Colors {
+                    prev_color: color,
+                    color,
+                })
+            }
+        }
+    }
+
+    fn convert(&mut self, to: CurrentColorsDiscriminants) {
+        match self {
+            Self::Oklrch(c) => match to {
+                CurrentColorsDiscriminants::Oklrch => {}
+                CurrentColorsDiscriminants::Okhsv => {
+                    let color = c.color.into();
+                    let prev_color = c.prev_color.into();
+                    *self = Self::Okhsv(Colors { color, prev_color });
+                }
+            },
+            Self::Okhsv(c) => match to {
+                CurrentColorsDiscriminants::Oklrch => {
+                    let color = c.color.into();
+                    let prev_color = c.prev_color.into();
+                    *self = Self::Oklrch(Colors { color, prev_color });
+                }
+                CurrentColorsDiscriminants::Okhsv => {}
+            },
+        }
+    }
+
     fn assign(&mut self, color: Color, prev: bool) {
         match self {
             Self::Oklrch(c) => {
@@ -371,17 +427,14 @@ impl App {
 
         log_startup::log("Gl programs created");
 
-        let color = data.0.into();
+        let mode = cc
+            .storage
+            .and_then(|storage| storage.get_string("picker_mode"))
+            .and_then(|s| CurrentColorsDiscriminants::from_str(&s).ok())
+            .unwrap_or(CurrentColorsDiscriminants::Oklrch);
 
         Self {
-            // colors: CurrentColors::Oklrch(Colors {
-            //     prev_color: color,
-            //     color,
-            // }),
-            colors: CurrentColors::Okhsv(Colors {
-                prev_color: color,
-                color,
-            }),
+            colors: CurrentColors::new(mode, data.0),
             format: data.1,
             use_alpha: data.2,
             programs,
@@ -402,21 +455,13 @@ impl App {
 
         let is_oklch = self.colors.discriminant() == CurrentColorsDiscriminants::Oklrch;
 
-        let gamut_clip = |color| {
-            if is_oklch {
-                gamut_clip_preserve_chroma(color)
-            } else {
-                LinearRgba::from_f32_array(color.to_f32_array().map(|c| c.clamp(0., 1.)))
-            }
-        };
-
-        let color_fallback = gamut_clip(color_rgba);
+        let color_fallback = gamut_clip_preserve_chroma(color_rgba);
 
         let fallback_u8 = Srgba::from(color_fallback).to_u8_array();
         let fallback_egui_color =
             egui::Color32::from_rgb(fallback_u8[0], fallback_u8[1], fallback_u8[2]);
 
-        let prev_color_fallback = gamut_clip(prev_color_rgba);
+        let prev_color_fallback = gamut_clip_preserve_chroma(prev_color_rgba);
 
         self.fallbacks = Fallbacks {
             cur: color_fallback,
@@ -491,14 +536,16 @@ impl App {
                 }
             };
 
+        let is_oklch = self.colors.discriminant() == CurrentColorsDiscriminants::Oklrch;
+
         let mut builder = builder.size(Size::remainder());
-        if self.colors.discriminant() == CurrentColorsDiscriminants::Oklrch {
+        if is_oklch {
             builder = builder.size(Size::exact(4.)).size(Size::remainder());
         }
 
         builder.horizontal(|mut strip| {
             for i in 0..2 {
-                if self.colors.discriminant() == CurrentColorsDiscriminants::Okhsv && i == 1 {
+                if !is_oklch && i == 1 {
                     continue;
                 }
                 if i != 0 {
@@ -519,6 +566,7 @@ impl App {
                 strip.cell(|ui| {
                     let id = canvas_input(
                         CanvasInputKind::Picker,
+                        !is_oklch,
                         ui,
                         |response, key_output, rect, ui| {
                             let hotkey = [Key::Num1, Key::Num2][i];
@@ -629,6 +677,7 @@ impl App {
 
                         canvas_input(
                             CanvasInputKind::Slider,
+                            false,
                             ui,
                             |response, key_output, rect, ui| {
                                 let hotkey = [Key::Num3, Key::Num4, Key::Num5, Key::Num6][i];
@@ -961,6 +1010,7 @@ impl App {
     }
 
     fn hotkey(&self, ui: &mut Ui, key: Key) -> bool {
+        // ui.memory(|m| m.storage
         let text_input_focused =
             ui.memory(|m| m.focused().is_some_and(|id| self.text_inputs.contains(&id)));
         ui.input(|input| (!text_input_focused || input.modifiers.command) && input.key_pressed(key))
@@ -1004,10 +1054,10 @@ impl eframe::App for App {
                         }
                     }
                 }
-                if let egui::Event::Text(text) = event {
-                    if ["h", "j", "k", "l"].contains(&text.to_ascii_lowercase().as_str()) {
-                        *text = String::new();
-                    }
+                if let egui::Event::Text(text) = event
+                    && ["h", "j", "k", "l"].contains(&text.to_ascii_lowercase().as_str())
+                {
+                    *text = String::new();
                 }
                 true
             });
@@ -1038,7 +1088,7 @@ impl eframe::App for App {
         let margin = egui::Margin {
             left: 26,
             right: 26,
-            top: 20,
+            top: 10,
             bottom: 20,
         };
 
@@ -1049,18 +1099,37 @@ impl eframe::App for App {
 
         central_panel.show(ctx, |ui| {
             StripBuilder::new(ui)
+                .size(Size::exact(30.))
                 .size(Size::remainder())
                 .size(Size::relative(0.01))
                 .size(Size::relative(0.20).at_least(120.))
                 .size(Size::relative(0.01))
                 .size(Size::relative(0.18).at_least(110.))
                 .vertical(|mut strip| {
+                    strip.cell(|ui| {
+                        ui.horizontal(|ui| {
+                            ui.allocate_space(Vec2::new(8., 0.));
+                            ui.style_mut().visuals.selection.bg_fill = Color32::from_gray(50);
+                            ui.style_mut().spacing.button_padding = egui::vec2(16.0, 3.0);
+
+                            for (d, s) in [
+                                (CurrentColorsDiscriminants::Oklrch, "OKLCH"),
+                                (CurrentColorsDiscriminants::Okhsv, "OKHSV"),
+                            ] {
+                                let is_current = self.colors.discriminant() == d;
+                                let text = RichText::new(s).size(18.);
+                                if Button::selectable(is_current, text).ui(ui).clicked() {
+                                    self.colors.convert(d);
+                                }
+                            }
+                        });
+                    });
                     strip.strip(|builder| {
                         self.update_pickers(builder);
                     });
-                    strip.cell(|_| {});
+                    strip.empty();
                     strip.strip(|builder| self.update_sliders(builder));
-                    strip.cell(|_| {});
+                    strip.empty();
                     strip.strip(|builder| {
                         builder
                             .size(Size::remainder())
@@ -1090,5 +1159,9 @@ impl eframe::App for App {
                 prog.lock().unwrap().destroy(gl);
             }
         }
+    }
+
+    fn save(&mut self, storage: &mut dyn Storage) {
+        storage.set_string("picker_mode", self.colors.discriminant().to_string());
     }
 }

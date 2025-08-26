@@ -29,8 +29,17 @@ const vec2 sample_positions[4] = vec2[4](
 	vec2(-3./8., 1./8.)
 );
 
+
 vec3 to_srgb(vec3 c) {
+#ifdef OUTPUT_LINEAR_COLOR
+    return c;
+#else
 	return mix(12.92 * c, 1.055 * pow(c, vec3(0.4166667)) - 0.055, step(0.0031308, c));
+#endif
+}
+
+vec4 to_srgba(vec4 c) {
+    return vec4(to_srgb(c.rgb), c.a);
 }
 
 vec3 oklch_to_oklab(vec3 c) {

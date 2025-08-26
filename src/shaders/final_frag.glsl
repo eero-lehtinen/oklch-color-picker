@@ -13,12 +13,12 @@ void main() {
 	} else if (uv.x < 0.75) {
 		c = vec4(color.rgb, 1);
 	} else {
-		c = color;
+		c = vec4(color.rgb, 1);
 	}
 
 	vec4 color = blend_premultiplied(
 		premultiply(cb), 
-		premultiply(c)
+		premultiply(to_srgba(c))
 	);
 
     FragColor = color;
