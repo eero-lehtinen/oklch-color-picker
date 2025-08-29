@@ -1,4 +1,3 @@
-use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 use crate::gamut::{Okhsva, Oklrcha, clamp_rgba, gamut_clip_preserve_chroma};
@@ -21,6 +20,7 @@ use egui::{
     UiBuilder, Widget,
 };
 use egui_extras::{Column, Size, StripBuilder, TableBuilder};
+use serde::{Deserialize, Serialize};
 use strum::{Display, EnumDiscriminants, EnumString, IntoDiscriminant, IntoEnumIterator};
 use web_time::{Duration, Instant};
 
@@ -229,7 +229,7 @@ fn canvas_final(ui: &mut egui::Ui) -> egui::Frame {
 }
 
 #[derive(Clone, Debug, EnumDiscriminants)]
-#[strum_discriminants(derive(EnumString, Display))]
+#[strum_discriminants(derive(EnumString, Display, Serialize, Deserialize))]
 pub enum CurrentColors {
     Oklrch(Colors<Oklrcha>),
     Okhsv(Colors<Okhsva>),
@@ -415,6 +415,8 @@ impl App {
         setup_egui_config(&cc.egui_ctx);
         log_startup::log("Egui custom setup");
 
+        egui_extras::install_image_loaders(&cc.egui_ctx);
+
         let gl = cc.gl.as_ref().unwrap();
 
         let programs = ProgramKind::iter_all()
@@ -428,11 +430,7 @@ impl App {
 
         log_startup::log("Gl programs created");
 
-        let mode = cc
-            .storage
-            .and_then(|storage| storage.get_string("picker_mode"))
-            .and_then(|s| CurrentColorsDiscriminants::from_str(&s).ok())
-            .unwrap_or(CurrentColorsDiscriminants::Oklrch);
+        let AppData { mode } = Self::load(cc.storage);
 
         Self {
             colors: CurrentColors::new(mode, data.0),
@@ -448,6 +446,11 @@ impl App {
             text_inputs: HashSet::default(),
             show_settings: false,
         }
+    }
+
+    fn load(s: Option<&dyn Storage>) -> AppData {
+        s.and_then(|s| eframe::get_value(s, "app_data"))
+            .unwrap_or_default()
     }
 
     fn calculate_fallbacks(&mut self) {
@@ -568,7 +571,7 @@ impl App {
                 }
 
                 let [ix, iy] = if i == 0 {
-                    // (lightness_r, chroma) or (value, saturation)
+                    // (lightness_r, chroma) or (saturation, value)
                     match self.colors.discriminant() {
                         CurrentColorsDiscriminants::Oklrch => [0, 1],
                         CurrentColorsDiscriminants::Okhsv => [1, 2],
@@ -834,9 +837,10 @@ impl App {
                     }
                 });
 
+            ui.style_mut().spacing.button_padding = egui::vec2(6.0, 6.0);
             let response = ui.add(
-                egui::Button::new("?")
-                    .min_size(Vec2::new(ui.available_height(), ui.available_height())),
+                egui::Button::new(egui::include_image!("settings.svg"))
+                     .min_size(Vec2::new(ui.available_height(), ui.available_height())),
             );
             if response.clicked() {
                 self.show_settings = !self.show_settings;
@@ -1032,6 +1036,20 @@ impl App {
     }
 }
 
+#[derive(Deserialize, Serialize)]
+#[serde(default)]
+struct AppData {
+    mode: CurrentColorsDiscriminants,
+}
+
+impl Default for AppData {
+    fn default() -> Self {
+        Self {
+            mode: CurrentColorsDiscriminants::Oklrch,
+        }
+    }
+}
+
 impl eframe::App for App {
     fn raw_input_hook(&mut self, ctx: &egui::Context, raw_input: &mut egui::RawInput) {
         let text_input_focused =
@@ -1177,6 +1195,12 @@ impl eframe::App for App {
     }
 
     fn save(&mut self, storage: &mut dyn Storage) {
-        storage.set_string("picker_mode", self.colors.discriminant().to_string());
+        eframe::set_value(
+            storage,
+            "app_data",
+            &AppData {
+                mode: self.colors.discriminant(),
+            },
+        );
     }
 }
