@@ -1,10 +1,11 @@
-uniform float hue;
+uniform vec3 values;
 
 vec4 sampl(vec2 uv) {
 	float chroma = uv.y * CHROMA_MAX;
-	float lightness = lr_to_l(uv.x);
-	vec3 lch = vec3(lightness, chroma, hue / 360.);
-	return oklch_to_srgb(lch);
+	float hue = uv.x;
+	float lightness = toe_inv(values.x);
+	vec3 lch = vec3(lightness, chroma, hue);
+	return oklch_to_linear_clamped(lch);
 }
 
 void main() {
@@ -20,9 +21,5 @@ void main() {
 		color = sampl(uv);
 	}
 
-	color.rgb += screen_space_dither(gl_FragCoord.xy);
-
-	FragColor = premultiply(color);
+	FragColor = fragOutput(color);
 }
-
-

@@ -54,7 +54,7 @@ fn main() -> ExitCode {
     let native_options = eframe::NativeOptions {
         renderer: eframe::Renderer::Glow,
         viewport: ViewportBuilder::default()
-            .with_min_inner_size(Vec2::new(500., 400.))
+            .with_min_inner_size(Vec2::new(400., 400.))
             .with_icon(load_icon()),
         ..Default::default()
     };
