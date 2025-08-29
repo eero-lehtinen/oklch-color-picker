@@ -37,7 +37,7 @@ void main() {
 		color = sampl(uv);
 	}
 
-	FragColor = output(color);
+	FragColor = fragOutput(color);
 }
 
 

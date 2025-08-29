@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use bevy_color::{ColorToComponents, Srgba};
+use bevy_color::ColorToComponents;
 use eframe::glow::{self, HasContext};
 use egui::Vec2;
 

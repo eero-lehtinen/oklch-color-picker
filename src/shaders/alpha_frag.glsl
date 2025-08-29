@@ -10,5 +10,5 @@ void main() {
 		to_srgba(vec4(color, alpha))
 	));
 
-    FragColor = output(color);
+    FragColor = fragOutput(color);
 }

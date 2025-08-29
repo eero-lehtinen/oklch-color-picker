@@ -64,7 +64,7 @@ vec4 unpremultiply(vec4 color) {
     }
 }
 
-vec4 output(vec4 linear) {
+vec4 fragOutput(vec4 linear) {
     linear.rgb += screen_space_dither(gl_FragCoord.xy);
 #ifdef OUTPUT_LINEAR_COLOR
     return premultiply(linear);

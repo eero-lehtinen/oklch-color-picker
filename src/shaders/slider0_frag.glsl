@@ -14,5 +14,5 @@ void main() {
 		color = okhsv_to_linear(vec3(hue, saturation, value));
 	}
 
-    FragColor = output(color);
+    FragColor = fragOutput(color);
 }
