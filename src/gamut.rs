@@ -217,19 +217,18 @@ pub fn gamut_clip_preserve_chroma(rgba: LinearRgba) -> LinearRgba {
         rgba.alpha,
     ));
 
-    result.red = result.red.clamp(0., 1.);
-    result.green = result.green.clamp(0., 1.);
-    result.blue = result.blue.clamp(0., 1.);
-
-    // Don't bother if the result is very close
-    if (rgba.red - result.red).abs() < 0.003
-        && (rgba.green - result.green).abs() < 0.003
-        && (rgba.blue - result.blue).abs() < 0.003
-    {
-        return rgba;
-    }
+    result = clamp_rgba(result);
 
     result
+}
+
+pub fn clamp_rgba(rgba: LinearRgba) -> LinearRgba {
+    LinearRgba {
+        red: rgba.red.clamp(0., 1.),
+        green: rgba.green.clamp(0., 1.),
+        blue: rgba.blue.clamp(0., 1.),
+        alpha: rgba.alpha.clamp(0., 1.),
+    }
 }
 
 const K1: f32 = 0.206;
@@ -324,6 +323,10 @@ impl From<Okhsva> for Oklaba {
         let s = okhsv.saturation;
         let v = okhsv.value;
 
+        if v == 0. {
+            return Oklaba::new(0., 0., 0., okhsv.alpha);
+        }
+
         let a_ = (2. * PI * h).cos();
         let b_ = (2. * PI * h).sin();
 
@@ -368,7 +371,7 @@ impl From<Oklaba> for Okhsva {
     fn from(oklaba: Oklaba) -> Self {
         let c = (oklaba.a * oklaba.a + oklaba.b * oklaba.b).sqrt();
         if c == 0. {
-            return Okhsva::new(0., 0., toe(oklaba.lightness), oklaba.alpha);
+            return Okhsva::new(0., 0., 0., oklaba.alpha);
         }
 
         let a_ = oklaba.a / c;

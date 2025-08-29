@@ -1,14 +1,14 @@
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
-use crate::gamut::{Okhsva, Oklrcha, gamut_clip_preserve_chroma};
+use crate::gamut::{Okhsva, Oklrcha, clamp_rgba, gamut_clip_preserve_chroma};
 use crate::gl_programs::{GlowProgram, ProgramKind};
 use crate::{
     formats::{ColorFormat, format_color, parse_color},
     log_startup,
 };
 use crate::{lerp, map};
-use bevy_color::{Color, ColorToPacked, LinearRgba, Oklaba, Oklcha, Srgba};
+use bevy_color::{Color, ColorToComponents, ColorToPacked, LinearRgba, Oklaba, Oklcha, Srgba};
 use eframe::Storage;
 use eframe::{
     egui::{self, Color32, DragValue, Pos2, RichText, Stroke, Vec2, ahash::HashMap},
@@ -187,7 +187,8 @@ fn canvas_input(
 
         let side_margin = if center {
             let size = ui.available_size();
-            let canvas_size = Vec2::new(size.x.min(size.y * 1.5), size.y);
+            let max_width = size.y * 1.33;
+            let canvas_size = Vec2::new(size.x.min(max_width), size.y);
             (size.x - canvas_size.x) / 2.
         } else {
             0.
@@ -455,21 +456,37 @@ impl App {
 
         let is_oklch = self.colors.discriminant() == CurrentColorsDiscriminants::Oklrch;
 
-        let color_fallback = gamut_clip_preserve_chroma(color_rgba);
+        let gamut_clip = |color: LinearRgba| -> (LinearRgba, bool) {
+            if is_oklch {
+                let clipped = gamut_clip_preserve_chroma(color);
+                let is_fallback = clipped
+                    .to_f32_array_no_alpha()
+                    .iter()
+                    .zip(color.to_f32_array_no_alpha())
+                    .any(|(a, b)| (*a - b).abs() > 0.003);
+                (clipped, is_fallback)
+            } else {
+                (clamp_rgba(color), false)
+            }
+        };
+
+        let (color_fallback, is_cur_fallback) = gamut_clip(color_rgba);
 
         let fallback_u8 = Srgba::from(color_fallback).to_u8_array();
         let fallback_egui_color =
             egui::Color32::from_rgb(fallback_u8[0], fallback_u8[1], fallback_u8[2]);
 
-        let prev_color_fallback = gamut_clip_preserve_chroma(prev_color_rgba);
+        let (prev_color_fallback, is_prev_fallback) = gamut_clip(prev_color_rgba);
 
         self.fallbacks = Fallbacks {
             cur: color_fallback,
-            is_cur_fallback: is_oklch && color_fallback != color_rgba,
+            is_cur_fallback,
             prev: prev_color_fallback,
-            is_prev_fallback: is_oklch && prev_color_fallback != prev_color_rgba,
+            is_prev_fallback,
             cur_egui: fallback_egui_color,
         };
+
+        dbg!(&color_rgba);
     }
 
     fn glow_paint(&self, ui: &mut egui::Ui, program: ProgramKind, size: Vec2) {
