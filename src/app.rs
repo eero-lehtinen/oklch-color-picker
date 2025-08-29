@@ -485,8 +485,6 @@ impl App {
             is_prev_fallback,
             cur_egui: fallback_egui_color,
         };
-
-        dbg!(&color_rgba);
     }
 
     fn glow_paint(&self, ui: &mut egui::Ui, program: ProgramKind, size: Vec2) {

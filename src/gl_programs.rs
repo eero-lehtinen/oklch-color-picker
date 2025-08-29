@@ -155,7 +155,7 @@ impl GlowProgram {
                 ProgramKind::Slider(3) => {
                     gl.uniform_3_f32_slice(
                         uni_loc("color").as_ref(),
-                        &Srgba::from(fallbacks.cur).to_f32_array_no_alpha()[..],
+                        &fallbacks.cur.to_f32_array_no_alpha()[..],
                     );
                 }
                 ProgramKind::Picker(_) | ProgramKind::Slider(_) => {

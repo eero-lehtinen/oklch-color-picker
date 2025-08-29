@@ -16,10 +16,10 @@ void main() {
 		c = color;
 	}
 
-	vec4 color = blend_premultiplied(
-		premultiply(to_srgba(cb)), 
-		premultiply(to_srgba(c))
-	);
+	vec4 color = from_srgba(blend(
+		cb, 
+		to_srgba(c)
+	));
 
-    FragColor = color;
+    FragColor = output(color);
 }

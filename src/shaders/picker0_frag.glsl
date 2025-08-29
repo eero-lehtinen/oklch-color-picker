@@ -5,7 +5,7 @@ vec4 sample_oklch(vec2 uv) {
 	float lightness = toe_inv(uv.x);
 	float hue = values.z / 360.;
 	vec3 lch = vec3(lightness, chroma, hue);
-	return oklch_to_srgb(lch);
+	return oklch_to_linear_clamped(lch);
 }
 
 vec4 sample_okhsv(vec2 uv) {
@@ -13,7 +13,7 @@ vec4 sample_okhsv(vec2 uv) {
 	float value = uv.y;
 	float hue = values.x / 360.;
 	vec3 hsv = vec3(hue, saturation, value);
-	return okhsv_to_srgb(hsv);
+	return okhsv_to_linear(hsv);
 }
 
  vec4 sampl(vec2 uv) {
@@ -37,9 +37,7 @@ void main() {
 		color = sampl(uv);
 	}
 
-	color.rgb += screen_space_dither(gl_FragCoord.xy);
-
-	FragColor = premultiply(color);
+	FragColor = output(color);
 }
 
 

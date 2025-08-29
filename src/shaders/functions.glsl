@@ -31,15 +31,46 @@ const vec2 sample_positions[4] = vec2[4](
 
 
 vec3 to_srgb(vec3 c) {
-#ifdef OUTPUT_LINEAR_COLOR
-    return c;
-#else
 	return mix(12.92 * c, 1.055 * pow(c, vec3(0.4166667)) - 0.055, step(0.0031308, c));
-#endif
 }
 
 vec4 to_srgba(vec4 c) {
     return vec4(to_srgb(c.rgb), c.a);
+}
+
+vec3 from_srgb(vec3 c) {
+    return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
+}
+
+vec4 from_srgba(vec4 c) {
+    return vec4(from_srgb(c.rgb), c.a);
+}
+
+vec3 screen_space_dither(vec2 frag_coord) {
+    vec3 dither = vec3(dot(vec2(171.0, 231.0), frag_coord)).xxx;
+    dither = fract(dither.rgb / vec3(103.0, 71.0, 97.0));
+    return (dither - 0.5) / 255.0;
+}
+
+vec4 premultiply(vec4 color) {
+	return vec4(color.rgb * color.a, color.a);
+}
+
+vec4 unpremultiply(vec4 color) {
+    if (color.a == 0.) {
+        return vec4(0.);
+    } else {
+        return vec4(color.rgb / color.a, color.a);
+    }
+}
+
+vec4 output(vec4 linear) {
+    linear.rgb += screen_space_dither(gl_FragCoord.xy);
+#ifdef OUTPUT_LINEAR_COLOR
+    return premultiply(linear);
+#else
+	return premultiply(to_srgba(linear));
+#endif
 }
 
 vec3 oklch_to_oklab(vec3 c) {
@@ -50,7 +81,7 @@ vec3 oklch_to_oklab(vec3 c) {
 	);
 }
 
-vec3 oklab_to_linear_srgb(vec3 c) {
+vec3 oklab_to_linear(vec3 c) {
 	float l_ = c.x + 0.3963377774f * c.y + 0.2158037573f * c.z;
 	float m_ = c.x - 0.1055613458f * c.y - 0.0638541728f * c.z;
 	float s_ = c.x - 0.0894841775f * c.y - 1.2914855480f * c.z;
@@ -66,17 +97,15 @@ vec3 oklab_to_linear_srgb(vec3 c) {
 	);
 }
 
-vec4 oklch_to_srgb(vec3 lch) {
-	vec3 rgb = oklab_to_linear_srgb(oklch_to_oklab(lch));
+vec4 oklch_to_linear_clamped(vec3 lch) {
+	vec3 rgb = oklab_to_linear(oklch_to_oklab(lch));
 
 	float a = 1.0 - float(any(lessThan(rgb, vec3(0.0))) || any(greaterThan(rgb, vec3(1.0))));
 
-	return vec4(to_srgb(rgb), a);
+	return vec4(rgb, a);
 }
 
-vec4 premultiply(vec4 color) {
-	return vec4(color.rgb * color.a, color.a);
-}
+
 
 vec4 blend_premultiplied(vec4 below, vec4 above) {
 	return vec4(above.rgb + below.rgb * (1. - above.a), above.a + below.a * (1. - above.a));
@@ -101,11 +130,6 @@ float toe(float l) {
 	return 0.5 * (k3 * l - k1 + sqrt((k3 * l - k1) * (k3 * l - k1) + 4. * k2 * k3 * l));
 }
 
-vec3 screen_space_dither(vec2 frag_coord) {
-    vec3 dither = vec3(dot(vec2(171.0, 231.0), frag_coord)).xxx;
-    dither = fract(dither.rgb / vec3(103.0, 71.0, 97.0));
-    return (dither - 0.5) / 255.0;
-}
 
 vec4 checkerboard(float checker_size, float soften) {
 	vec2 uv = uv / checker_size;
@@ -196,7 +220,7 @@ float compute_max_saturation(float a, float b) {
 
 vec2 find_cusp(float a, float b) {
     float s_cusp = compute_max_saturation(a, b);
-    vec3 rgb_at_max = oklab_to_linear_srgb(vec3(1.0, s_cusp * a, s_cusp * b));
+    vec3 rgb_at_max = oklab_to_linear(vec3(1.0, s_cusp * a, s_cusp * b));
     float l_cusp = pow(1.0 / max(rgb_at_max.r, max(rgb_at_max.g, rgb_at_max.b)), 1.0/3.0);
     float c_cusp = l_cusp * s_cusp;
     return vec2(l_cusp, c_cusp);
@@ -241,7 +265,7 @@ vec3 okhsv_to_oklab(vec3 hsv) {
     c = c * l_new / l;
     l = l_new;
 
-    vec3 rgb_scale = oklab_to_linear_srgb(vec3(l_vt, a_ * c_vt, b_ * c_vt));
+    vec3 rgb_scale = oklab_to_linear(vec3(l_vt, a_ * c_vt, b_ * c_vt));
     float scale_l = pow(1.0 / max(max(rgb_scale.r, rgb_scale.g), max(rgb_scale.b, 0.0)), 1.0/3.0);
 
     l *= scale_l;
@@ -282,7 +306,7 @@ vec3 oklab_to_okhsv(vec3 lab) {
     float c_vt = c_v * l_vt / l_v;
 
     // we can then use these to invert the step that compensates for the toe and the curved top part of the triangle:
-    vec3 rgb_scale = oklab_to_linear_srgb(vec3(l_vt, a_ * c_vt, b_ * c_vt));
+    vec3 rgb_scale = oklab_to_linear(vec3(l_vt, a_ * c_vt, b_ * c_vt));
     float scale_l = pow(1.0 / max(max(rgb_scale.r, rgb_scale.g), max(rgb_scale.b, 0.0)), 1.0/3.0);
 
     l /= scale_l;
@@ -297,6 +321,6 @@ vec3 oklab_to_okhsv(vec3 lab) {
 }
 
 
-vec4 okhsv_to_srgb(vec3 hsv) {
-	return vec4(to_srgb(oklab_to_linear_srgb(okhsv_to_oklab(hsv))), 1.0);
+vec4 okhsv_to_linear(vec3 hsv) {
+	return vec4(oklab_to_linear(okhsv_to_oklab(hsv)), 1.0);
 }
