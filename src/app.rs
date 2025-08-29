@@ -228,21 +228,6 @@ fn canvas_final(ui: &mut egui::Ui) -> egui::Frame {
         .fill(MID_GRAY.into())
 }
 
-pub struct App {
-    colors: CurrentColors,
-    format: ColorFormat,
-    use_alpha: bool,
-    programs: HashMap<ProgramKind, Arc<Mutex<GlowProgram>>>,
-    input_text: HashMap<u8, String>,
-    first_frame: bool,
-    frame_end_labels: Vec<(Rect, RichText)>,
-    fallbacks: Fallbacks,
-    copied_notice: Option<Instant>,
-    first_input: Id,
-    text_inputs: HashSet<Id>,
-    show_settings: bool,
-}
-
 #[derive(Clone, Debug, EnumDiscriminants)]
 #[strum_discriminants(derive(EnumString, Display))]
 pub enum CurrentColors {
@@ -251,17 +236,17 @@ pub enum CurrentColors {
 }
 
 impl CurrentColors {
-    fn new(mode: CurrentColorsDiscriminants, color: Oklcha) -> Self {
+    fn new(mode: CurrentColorsDiscriminants, color: Color) -> Self {
         match mode {
             CurrentColorsDiscriminants::Oklrch => {
-                let color = color.into();
+                let color = Oklcha::from(color).into();
                 Self::Oklrch(Colors {
                     prev_color: color,
                     color,
                 })
             }
             CurrentColorsDiscriminants::Okhsv => {
-                let color = color.into();
+                let color = Oklaba::from(color).into();
                 Self::Okhsv(Colors {
                     prev_color: color,
                     color,
@@ -409,8 +394,23 @@ pub struct Fallbacks {
     cur_egui: egui::Color32,
 }
 
+pub struct App {
+    colors: CurrentColors,
+    format: ColorFormat,
+    use_alpha: bool,
+    programs: HashMap<ProgramKind, Arc<Mutex<GlowProgram>>>,
+    input_text: HashMap<u8, String>,
+    first_frame: bool,
+    frame_end_labels: Vec<(Rect, RichText)>,
+    fallbacks: Fallbacks,
+    copied_notice: Option<Instant>,
+    first_input: Id,
+    text_inputs: HashSet<Id>,
+    show_settings: bool,
+}
+
 impl App {
-    pub fn new(cc: &eframe::CreationContext<'_>, data: Arc<(Oklcha, ColorFormat, bool)>) -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>, data: Arc<(Color, ColorFormat, bool)>) -> Self {
         log_startup::log("App new");
         setup_egui_config(&cc.egui_ctx);
         log_startup::log("Egui custom setup");

@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use bevy_color::Oklcha;
+use bevy_color::{Color, Oklcha};
 use formats::ColorFormat;
 use gamut::gamut_clip_preserve_chroma;
 use rand::{Rng, SeedableRng, rngs::SmallRng};
@@ -37,14 +37,14 @@ fn main() -> ExitCode {
                 return ExitCode::FAILURE;
             };
 
-            (color.into(), format, use_alpha)
+            (color, format, use_alpha)
         }
         (Some(color_string), None) => {
             let Some((color, format, use_alpha)) = parse_color_unknown_format(&color_string) else {
                 eprintln!("Could not detect format for color '{}'", color_string);
                 return ExitCode::FAILURE;
             };
-            (color.into(), format, use_alpha)
+            (color, format, use_alpha)
         }
         (None, Some(format)) => (random_color(), format, true),
         (None, None) => (random_color(), ColorFormat::default(), true),
@@ -163,7 +163,7 @@ mod log_startup {
     pub fn log(_: &str) {}
 }
 
-fn random_color() -> Oklcha {
+fn random_color() -> Color {
     let mut rng = SmallRng::from_os_rng();
     let color = Oklcha::new(
         rng.random_range(0.4..0.8),
