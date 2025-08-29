@@ -21,5 +21,5 @@ void main() {
 		to_srgba(c)
 	));
 
-    FragColor = fragOutput(color);
+    FragColor = fragOutputNoDither(color);
 }

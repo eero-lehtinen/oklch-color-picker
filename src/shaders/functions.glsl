@@ -64,14 +64,20 @@ vec4 unpremultiply(vec4 color) {
     }
 }
 
-vec4 fragOutput(vec4 linear) {
-    linear.rgb += screen_space_dither(gl_FragCoord.xy);
+
+vec4 fragOutputNoDither(vec4 linear) {
 #ifdef OUTPUT_LINEAR_COLOR
     return premultiply(linear);
 #else
-	return premultiply(to_srgba(linear));
+    return premultiply(to_srgba(linear));
 #endif
 }
+
+vec4 fragOutput(vec4 linear) {
+    linear.rgb += screen_space_dither(gl_FragCoord.xy);
+    return fragOutputNoDither(linear);
+}
+
 
 vec3 oklch_to_oklab(vec3 c) {
 	return vec3 (
