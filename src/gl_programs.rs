@@ -6,24 +6,24 @@ use egui::Vec2;
 
 use crate::app::{CurrentColors, Fallbacks};
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-pub enum ProgramKind {
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug, strum::Display)]
+pub enum RenderKind {
     Picker(u8),
     Slider(u8),
     Final,
 }
 
-impl ProgramKind {
+impl RenderKind {
     pub fn iter_all() -> impl Iterator<Item = Self> {
         (0..=1)
-            .map(ProgramKind::Picker)
-            .chain((0..=3).map(ProgramKind::Slider))
-            .chain(std::iter::once(ProgramKind::Final))
+            .map(RenderKind::Picker)
+            .chain((0..=3).map(RenderKind::Slider))
+            .chain(std::iter::once(RenderKind::Final))
     }
 }
 
 pub struct GlowProgram {
-    kind: ProgramKind,
+    kind: RenderKind,
     program: glow::Program,
     vertex_array: glow::VertexArray,
     supersample: u32,
@@ -41,17 +41,17 @@ static VERT_SHADER_SOURCE: LazyLock<String> =
     LazyLock::new(|| [shader_version(), include_str!("./shaders/quad_vert.glsl")].concat());
 
 impl GlowProgram {
-    pub fn new(gl: &glow::Context, egui_ctx: &egui::Context, kind: ProgramKind) -> Self {
+    pub fn new(gl: &glow::Context, egui_ctx: &egui::Context, kind: RenderKind) -> Self {
         unsafe {
             let program = gl.create_program().unwrap();
             let frag_shader_source_end = match kind {
-                ProgramKind::Picker(0) => include_str!("shaders/picker0_frag.glsl"),
-                ProgramKind::Picker(1) => include_str!("shaders/picker1_frag.glsl"),
-                ProgramKind::Slider(0) => include_str!("shaders/slider0_frag.glsl"),
-                ProgramKind::Slider(1) => include_str!("shaders/slider1_frag.glsl"),
-                ProgramKind::Slider(2) => include_str!("shaders/slider2_frag.glsl"),
-                ProgramKind::Slider(3) => include_str!("shaders/alpha_frag.glsl"),
-                ProgramKind::Final => include_str!("shaders/final_frag.glsl"),
+                RenderKind::Picker(0) => include_str!("shaders/picker0_frag.glsl"),
+                RenderKind::Picker(1) => include_str!("shaders/picker1_frag.glsl"),
+                RenderKind::Slider(0) => include_str!("shaders/slider0_frag.glsl"),
+                RenderKind::Slider(1) => include_str!("shaders/slider1_frag.glsl"),
+                RenderKind::Slider(2) => include_str!("shaders/slider2_frag.glsl"),
+                RenderKind::Slider(3) => include_str!("shaders/alpha_frag.glsl"),
+                RenderKind::Final => include_str!("shaders/final_frag.glsl"),
                 _ => panic!("Invalid ProgramKind"),
             };
             let define = if cfg!(target_arch = "wasm32") {
@@ -152,16 +152,16 @@ impl GlowProgram {
             );
             match self.kind {
                 // Alpha
-                ProgramKind::Slider(3) => {
+                RenderKind::Slider(3) => {
                     gl.uniform_3_f32_slice(
                         uni_loc("color").as_ref(),
                         &fallbacks.cur.to_f32_array_no_alpha()[..],
                     );
                 }
-                ProgramKind::Picker(_) | ProgramKind::Slider(_) => {
+                RenderKind::Picker(_) | RenderKind::Slider(_) => {
                     gl.uniform_3_f32_slice(uni_loc("values").as_ref(), &colors.values()[0..3]);
                 }
-                ProgramKind::Final => {
+                RenderKind::Final => {
                     gl.uniform_4_f32_slice(
                         uni_loc("prev_color").as_ref(),
                         &fallbacks.prev.to_f32_array()[..],

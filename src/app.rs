@@ -1,7 +1,8 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use crate::gamut::{Okhsva, Oklrcha, clamp_rgba, gamut_clip_preserve_chroma};
-use crate::gl_programs::{GlowProgram, ProgramKind};
+// use crate::gl_programs::{GlowProgram, RenderKind};
+use crate::render::{self, RenderKind};
 use crate::{
     formats::{ColorFormat, format_color, parse_color},
     log_startup,
@@ -11,8 +12,8 @@ use bevy_color::{Color, ColorToComponents, ColorToPacked, LinearRgba, Oklaba, Ok
 use eframe::Storage;
 use eframe::{
     egui::{self, Color32, DragValue, Pos2, RichText, Stroke, Vec2, ahash::HashMap},
-    egui_glow,
-    glow::{self},
+    // egui_glow,
+    // glow::{self},
 };
 use egui::ahash::HashSet;
 use egui::{
@@ -398,7 +399,7 @@ pub struct App {
     colors: CurrentColors,
     format: ColorFormat,
     use_alpha: bool,
-    programs: HashMap<ProgramKind, Arc<Mutex<GlowProgram>>>,
+    // programs: HashMap<RenderKind, Arc<Mutex<GlowProgram>>>,
     input_text: HashMap<u8, String>,
     first_frame: bool,
     frame_end_labels: Vec<(Rect, RichText)>,
@@ -417,16 +418,18 @@ impl App {
 
         egui_extras::install_image_loaders(&cc.egui_ctx);
 
-        let gl = cc.gl.as_ref().unwrap();
+        // let gl = cc.gl.as_ref().unwrap();
 
-        let programs = ProgramKind::iter_all()
-            .map(|kind| {
-                (
-                    kind,
-                    Arc::new(Mutex::new(GlowProgram::new(gl, &cc.egui_ctx, kind))),
-                )
-            })
-            .collect();
+        // let programs = RenderKind::iter_all()
+        //     .map(|kind| {
+        //         (
+        //             kind,
+        //             Arc::new(Mutex::new(GlowProgram::new(gl, &cc.egui_ctx, kind))),
+        //         )
+        //     })
+        //     .collect();
+
+        render::init(cc);
 
         log_startup::log("Gl programs created");
 
@@ -436,7 +439,6 @@ impl App {
             colors: CurrentColors::new(mode, data.0),
             format: data.1,
             use_alpha: data.2,
-            programs,
             input_text: Default::default(),
             first_frame: true,
             frame_end_labels: Default::default(),
@@ -490,22 +492,32 @@ impl App {
         };
     }
 
-    fn glow_paint(&self, ui: &mut egui::Ui, program: ProgramKind, size: Vec2) {
-        let p = Arc::clone(&self.programs[&program]);
+    fn glow_paint(&self, ui: &mut egui::Ui, kind: RenderKind, size: Vec2) {
+        // let p = Arc::clone(&self.programs[&program]);
         let rect = ui.min_rect();
 
         let colors = self.colors.clone();
         let fallbacks = self.fallbacks.clone();
 
-        let cb = egui::PaintCallback {
-            rect,
-            callback: Arc::new(egui_glow::CallbackFn::new(move |_info, painter| {
-                p.lock()
-                    .unwrap()
-                    .paint(painter.gl(), &colors, &fallbacks, size);
-            })),
+        // let callback =
+        //     egui_wgpu::Callback::new_paint_callback(rect, RenderCallback { angle: self.angle });
+        //
+        // let cb = egui::PaintCallback {
+        //     rect,
+        //     callback: Arc::new(egui_glow::CallbackFn::new(move |_info, painter| {
+        //         p.lock()
+        //             .unwrap()
+        //             .paint(painter.gl(), &colors, &fallbacks, size);
+        //     })),
+        // };
+        // ui.painter().add(cb);
+        let render_callback = render::RenderCallback {
+            kind,
+            size,
+            colors,
+            fallbacks,
         };
-        ui.painter().add(cb);
+        render::paint(ui, rect, render_callback);
     }
 
     fn update_pickers(&mut self, builder: StripBuilder) {
@@ -618,7 +630,8 @@ impl App {
                                 );
                             }
 
-                            self.glow_paint(ui, ProgramKind::Picker(i as u8), rect.size());
+                            let kind = [RenderKind::Picker1, RenderKind::Picker2][i];
+                            self.glow_paint(ui, kind, rect.size());
 
                             paint_picker_line(
                                 ui,
@@ -714,7 +727,13 @@ impl App {
                                     );
                                 }
 
-                                self.glow_paint(ui, ProgramKind::Slider(i as u8), rect.size());
+                                let kind = [
+                                    RenderKind::Slider1,
+                                    RenderKind::Slider2,
+                                    RenderKind::Slider3,
+                                    RenderKind::Slider4,
+                                ][i];
+                                self.glow_paint(ui, kind, rect.size());
 
                                 let val = *self.colors.values_mut()[i] / max;
                                 paint_slider_thumb(ui, rect, val, &response);
@@ -783,7 +802,7 @@ impl App {
                             Vec2::new(ui.available_width(), ui.available_height()),
                             egui::Sense::empty(),
                         );
-                        self.glow_paint(ui, ProgramKind::Final, rect.size());
+                        self.glow_paint(ui, RenderKind::Final, rect.size());
                     });
                 });
 
@@ -1186,12 +1205,12 @@ impl eframe::App for App {
         });
     }
 
-    fn on_exit(&mut self, gl: Option<&glow::Context>) {
-        if let Some(gl) = gl {
-            for prog in self.programs.values() {
-                prog.lock().unwrap().destroy(gl);
-            }
-        }
+    fn on_exit(&mut self) {
+        // if let Some(gl) = gl {
+        //     // for prog in self.programs.values() {
+        //     //     prog.lock().unwrap().destroy(gl);
+        //     // }
+        // }
     }
 
     fn save(&mut self, storage: &mut dyn Storage) {

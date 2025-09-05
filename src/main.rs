@@ -12,7 +12,8 @@ mod app;
 mod cli;
 mod formats;
 mod gamut;
-mod gl_programs;
+// mod gl_programs;
+mod render;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> ExitCode {
@@ -52,7 +53,7 @@ fn main() -> ExitCode {
     log_startup::log("Color parse");
 
     let native_options = eframe::NativeOptions {
-        renderer: eframe::Renderer::Glow,
+        renderer: eframe::Renderer::Wgpu,
         viewport: ViewportBuilder::default()
             .with_min_inner_size(Vec2::new(400., 400.))
             .with_icon(load_icon()),
@@ -88,7 +89,13 @@ fn load_icon() -> egui::IconData {
 fn main() {
     use eframe::wasm_bindgen::JsCast as _;
 
-    let web_options = eframe::WebOptions::default();
+    let log_level = if cfg!(debug_assertions) {
+        log::LevelFilter::Trace
+    } else {
+        log::LevelFilter::Debug
+    };
+
+    eframe::WebLogger::init(log_level).unwrap();
 
     wasm_bindgen_futures::spawn_local(async {
         let document = web_sys::window()
@@ -107,7 +114,7 @@ fn main() {
         let start_result = eframe::WebRunner::new()
             .start(
                 canvas,
-                web_options,
+                eframe::WebOptions::default(),
                 Box::new(|cc| Ok(Box::new(app::App::new(cc, data)))),
             )
             .await;
