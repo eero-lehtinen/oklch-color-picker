@@ -2,8 +2,10 @@ name: Deploy
 
 on:
   push:
-    tags:
-      - "[0-9]+.[0-9]+.[0-9]+"
+    branches:
+      - ci-test
+    # tags:
+    #   - "[0-9]+.[0-9]+.[0-9]+"
 
 permissions:
   contents: write
@@ -21,6 +23,11 @@ jobs:
             target: x86_64-unknown-linux-gnu
             lib_ext: "so"
 
+          - build: linux
+            os: ubuntu-22.04-arm
+            target: aarch64-unknown-linux-gnu
+            lib_ext: "so"
+
           - build: macos
             os: macos-latest
             target: x86_64-apple-darwin
@@ -34,6 +41,11 @@ jobs:
           - build: windows
             os: windows-latest
             target: x86_64-pc-windows-msvc
+            lib_ext: "dll"
+
+          - build: windows
+            os: windows-latest
+            target: aarch64-pc-windows-msvc
             lib_ext: "dll"
 
     steps:
@@ -88,9 +100,9 @@ jobs:
         run: |
           mv *.${{ matrix.lib_ext }} "parser_lua_module-${{ matrix.target }}.${{ matrix.lib_ext }}"
 
-      - name: Upload the binaries
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            ${{ env.ASSET }}
-            target/${{ matrix.target }}/release/parser_lua_module-${{ matrix.target }}.${{ matrix.lib_ext }}
+      # - name: Upload the binaries
+      #   uses: softprops/action-gh-release@v2
+      #   with:
+      #     files: |
+      #       ${{ env.ASSET }}
+      #       target/${{ matrix.target }}/release/parser_lua_module-${{ matrix.target }}.${{ matrix.lib_ext }}
