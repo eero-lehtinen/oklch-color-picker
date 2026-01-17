@@ -2,6 +2,7 @@ use std::sync::LazyLock;
 
 use bevy_color::{Color, ColorToComponents, ColorToPacked, Hsla, LinearRgba, Oklcha, Srgba};
 use clap::ValueEnum;
+use lexical_parse_float::FromLexicalWithOptions;
 use strum::IntoEnumIterator;
 use winnow::{
     ModalResult, Parser,
@@ -302,14 +303,16 @@ pub fn parse_hex(hex: &str, allow_short: bool) -> Option<(Srgba, bool)> {
     .into()
 }
 
+const FLOAT_OPTIONS: lexical_parse_float::Options = lexical_parse_float::Options::new();
+
 fn js_float_parser(input: &mut &str) -> ModalResult<f32> {
     alt(((digit1, opt(('.', digit0))).void(), ('.', digit1).void()))
         .take()
         .try_map(|s: &str| {
-            lexical_parse_float::parse::parse_complete::<
-                _,
-                { lexical_parse_float::format::JAVASCRIPT_LITERAL },
-            >(s.as_bytes(), &Default::default())
+            f32::from_lexical_with_options::<{ lexical_parse_float::format::JAVASCRIPT_LITERAL }>(
+                s.as_bytes(),
+                &FLOAT_OPTIONS,
+            )
         })
         .parse_next(input)
 }
