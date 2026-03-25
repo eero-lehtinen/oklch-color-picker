@@ -47,9 +47,9 @@ rand = { version = "0.10.0", default-features = false, features = [
 	"sys_rng",
 ] }
 getrandom = { version = "0.4.1", features = ["wasm_js"] }
-strum = { version = "0.27.1", features = ["derive"] }
+strum = { version = "0.28.0", features = ["derive"] }
 web-time = "1.1.0"
-winnow = { version = "0.7.3", features = ["simd"] }
+winnow = { version = "1.0.0", features = ["simd"] }
 serde = { version = "1.0.219", features = ["derive"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
