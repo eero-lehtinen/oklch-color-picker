@@ -51,7 +51,7 @@ fn setup_egui_config(ctx: &egui::Context) {
     // For some reason persistence breaks switching themes
     ctx.set_theme(egui::Theme::Dark);
 
-    ctx.style_mut(|style| {
+    ctx.global_style_mut(|style| {
         style
             .text_styles
             .get_mut(&egui::TextStyle::Body)
@@ -1112,7 +1112,8 @@ impl eframe::App for App {
         }
     }
 
-    fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, _: &mut eframe::Frame) {
+        let ctx = ui.ctx();
         if self.first_frame {
             log_startup::log("First frame start");
             self.first_frame = false;
@@ -1126,11 +1127,11 @@ impl eframe::App for App {
         };
 
         let central_panel = egui::CentralPanel::default()
-            .frame(egui::Frame::central_panel(&ctx.style()).inner_margin(margin));
+            .frame(egui::Frame::central_panel(&ctx.global_style()).inner_margin(margin));
 
         self.calculate_fallbacks();
 
-        central_panel.show(ctx, |ui| {
+        central_panel.show_inside(ui, |ui| {
             StripBuilder::new(ui)
                 .size(Size::exact(30.))
                 .size(Size::remainder())
