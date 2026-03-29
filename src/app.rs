@@ -16,8 +16,8 @@ use eframe::{
 };
 use egui::ahash::HashSet;
 use egui::{
-    Align2, Button, EventFilter, Id, Key, Margin, PopupAnchor, Rect, Response, Sense, Ui,
-    UiBuilder, Widget,
+    Align2, Button, EventFilter, FocusDirection, Id, Key, Margin, PopupAnchor, Rect, Response,
+    Sense, Ui, UiBuilder, Widget,
 };
 use egui_extras::{Column, Size, StripBuilder, TableBuilder};
 use serde::{Deserialize, Serialize};
@@ -120,13 +120,14 @@ fn canvas_input(
     kind: CanvasInputKind,
     center: bool,
     ui: &mut Ui,
-    add_contents: impl FnOnce(Response, Option<CanvasInputKeyOutput>, Rect, &mut Ui),
+    add_contents: impl FnOnce(Response, Option<CanvasInputKeyOutput>, Rect, Id, &mut Ui),
 ) -> Id {
     ui.scope_builder(UiBuilder::new().sense(Sense::drag()), |ui| {
         let h = ui.available_height();
         let response = ui.response();
         ui.style_mut().visuals.widgets.inactive.bg_stroke.color = MID_GRAY.into();
         let bg_stroke = ui.style().interact(&response).bg_stroke;
+        let id = response.id;
 
         let mut key_output = None;
 
@@ -146,12 +147,19 @@ fn canvas_input(
                 if input.modifiers.command {
                     return;
                 }
+                let up = input.num_presses(Key::ArrowUp) + input.num_presses(Key::K);
+                let down = input.num_presses(Key::ArrowDown) + input.num_presses(Key::J);
+                let left = input.num_presses(Key::ArrowLeft) + input.num_presses(Key::H);
+                let right = input.num_presses(Key::ArrowRight) + input.num_presses(Key::L);
+
                 let mut o = CanvasInputKeyOutput {
-                    vertical: input.num_presses(Key::ArrowUp) as f32
-                        - input.num_presses(Key::ArrowDown) as f32,
-                    horizontal: input.num_presses(Key::ArrowRight) as f32
-                        - input.num_presses(Key::ArrowLeft) as f32,
+                    vertical: up as f32 - down as f32,
+                    horizontal: right as f32 - left as f32,
                 };
+
+                if matches!(kind, CanvasInputKind::Slider) {
+                    o.vertical = 0.;
+                }
 
                 if input.modifiers.shift {
                     o.horizontal *= 10.;
@@ -208,7 +216,7 @@ fn canvas_input(
                     }
                     ui.set_height(ui.available_height());
                     let rect = ui.available_rect_before_wrap();
-                    add_contents(response, key_output, rect, ui);
+                    add_contents(response, key_output, rect, id, ui);
                 })
         })
     })
@@ -406,7 +414,13 @@ pub struct App {
     copied_notice: Option<Instant>,
     first_input: Id,
     text_inputs: HashSet<Id>,
+    sliders: Vec<Id>,
+    slider_text_inputs: Vec<Id>,
+    format_dropdown: Id,
+    done_button: Id,
     show_settings: bool,
+    focus_something: bool,
+    focus_dir: Option<FocusDirection>,
 }
 
 impl App {
@@ -444,7 +458,13 @@ impl App {
             copied_notice: None,
             first_input: Id::NULL,
             text_inputs: HashSet::default(),
+            sliders: vec![Id::NULL; 4],
+            slider_text_inputs: vec![Id::NULL; 4],
+            format_dropdown: Id::NULL,
+            done_button: Id::NULL,
             show_settings: false,
+            focus_something: false,
+            focus_dir: None,
         }
     }
 
@@ -586,7 +606,7 @@ impl App {
                         CanvasInputKind::Picker,
                         !is_oklch,
                         ui,
-                        |response, key_output, rect, ui| {
+                        |response, key_output, rect, _id, ui| {
                             let hotkey = [Key::Num1, Key::Num2][i];
                             self.focus_hotkey(ui, &response, hotkey);
 
@@ -697,7 +717,8 @@ impl App {
                             CanvasInputKind::Slider,
                             false,
                             ui,
-                            |response, key_output, rect, ui| {
+                            |response, key_output, rect, id, ui| {
+                                self.sliders[i] = id;
                                 let hotkey = [Key::Num3, Key::Num4, Key::Num5, Key::Num6][i];
                                 self.focus_hotkey(ui, &response, hotkey);
                                 if let Some(pos) = response.interact_pointer_pos() {
@@ -739,6 +760,7 @@ impl App {
                                 .max_decimals(if precision > 1. { 2 } else { 4 }),
                         );
                         self.text_inputs.insert(response.id);
+                        self.slider_text_inputs[i] = response.id;
                         show_label(ui, self.colors.values_name()[i]);
                     });
                 });
@@ -746,7 +768,13 @@ impl App {
         });
     }
 
-    fn update_color_edit(&mut self, ui: &mut egui::Ui, prev: bool, fallback: LinearRgba, id: u8) {
+    fn update_color_edit(
+        &mut self,
+        ui: &mut egui::Ui,
+        prev: bool,
+        fallback: LinearRgba,
+        id: u8,
+    ) -> Id {
         let mut text = if let Some(text) = self.input_text.remove(&id) {
             if let Some((c, use_alpha)) = parse_color(&text, self.format) {
                 self.use_alpha = use_alpha;
@@ -770,6 +798,8 @@ impl App {
         if output.response.has_focus() {
             self.input_text.insert(id, text.clone());
         }
+
+        output.response.id
     }
 
     fn update_color_previews(&mut self, builder: StripBuilder) {
@@ -826,6 +856,7 @@ impl App {
         style.spacing.button_padding = egui::vec2(4.0, 3.0);
 
         ui.horizontal(|ui| {
+            self.format_dropdown =
             egui::ComboBox::from_id_salt("format")
                 .width(ui.available_width().min(190.))
                 .truncate()
@@ -835,7 +866,7 @@ impl App {
                     for format in ColorFormat::iter() {
                         ui.selectable_value(&mut self.format, format, format.to_string());
                     }
-                });
+                }).response.id;
 
             ui.style_mut().spacing.button_padding = egui::vec2(6.0, 6.0);
             let response = ui.add(
@@ -976,6 +1007,7 @@ impl App {
                 .min_size(Vec2::new(max_w, max_h))
                 .wrap_mode(egui::TextWrapMode::Wrap);
             let response = ui.add(button);
+            self.done_button = response.id;
 
             if cfg!(target_arch = "wasm32") {
                 let copy = self.hotkey(ui, Key::C);
@@ -1055,61 +1087,100 @@ impl eframe::App for App {
         let text_input_focused =
             ctx.memory(|m| m.focused().is_some_and(|id| self.text_inputs.contains(&id)));
 
-        if !text_input_focused || raw_input.modifiers.command {
-            let nothing_focused = ctx.memory(|m| m.focused().is_none());
-            let mut wants_something_focused = false;
-            let mut wants_move_focus = false;
+        let ctrl = raw_input.modifiers.command;
 
-            let vim_keys = [
-                (Key::H, Key::ArrowLeft),
-                (Key::J, Key::ArrowDown),
-                (Key::K, Key::ArrowUp),
-                (Key::L, Key::ArrowRight),
-            ];
+        let mut remove_text_evs = Vec::new();
 
-            raw_input.events.retain_mut(|event| {
-                if let egui::Event::Key { key, .. } = event {
-                    if let Some((_, arrow_key)) =
-                        vim_keys.iter().find(|(vim_key, _)| vim_key == key)
-                    {
-                        *key = *arrow_key;
-                        wants_move_focus = true;
-                        if nothing_focused {
-                            wants_something_focused = true;
-                            return false;
-                        }
-                    }
-                    if vim_keys.iter().any(|(_, arrow_key)| arrow_key == key) {
-                        wants_move_focus = true;
-                        if nothing_focused {
-                            wants_something_focused = true;
-                            return false;
-                        }
-                    }
+        raw_input.events.retain_mut(|event| match event {
+            egui::Event::Key { key, pressed, .. } => {
+                let mut focus_dir = None;
+                let mut retain = true;
+                if matches!(
+                    *key,
+                    Key::H
+                        | Key::J
+                        | Key::K
+                        | Key::L
+                        | Key::ArrowLeft
+                        | Key::ArrowDown
+                        | Key::ArrowUp
+                        | Key::ArrowRight
+                ) {
+                    self.focus_something = true;
                 }
-                if let egui::Event::Text(text) = event
-                    && ["h", "j", "k", "l"].contains(&text.to_ascii_lowercase().as_str())
+                match *key {
+                    Key::H => {
+                        if ctrl {
+                            focus_dir = Some(FocusDirection::Left);
+                            retain = false;
+                            remove_text_evs.push("h");
+                        } else if !text_input_focused {
+                            *key = Key::ArrowLeft;
+                        }
+                    }
+                    Key::J => {
+                        if ctrl {
+                            focus_dir = Some(FocusDirection::Down);
+                            retain = false;
+                            remove_text_evs.push("j");
+                        } else if !text_input_focused {
+                            *key = Key::ArrowDown;
+                        }
+                    }
+                    Key::K => {
+                        if ctrl {
+                            focus_dir = Some(FocusDirection::Up);
+                            retain = false;
+                            remove_text_evs.push("k");
+                        } else if !text_input_focused {
+                            *key = Key::ArrowUp;
+                        }
+                    }
+                    Key::L => {
+                        if ctrl {
+                            focus_dir = Some(FocusDirection::Right);
+                            retain = false;
+                            remove_text_evs.push("l");
+                        } else if !text_input_focused {
+                            *key = Key::ArrowRight;
+                        }
+                    }
+                    Key::ArrowLeft if ctrl && !text_input_focused => {
+                        focus_dir = Some(FocusDirection::Left);
+                        retain = false;
+                    }
+                    Key::ArrowDown if ctrl => {
+                        focus_dir = Some(FocusDirection::Down);
+                        retain = false;
+                    }
+                    Key::ArrowUp if ctrl => {
+                        focus_dir = Some(FocusDirection::Up);
+                        retain = false;
+                    }
+                    Key::ArrowRight if ctrl && !text_input_focused => {
+                        focus_dir = Some(FocusDirection::Right);
+                        retain = false;
+                    }
+                    _ => {}
+                };
+                if let Some(dir) = focus_dir
+                    && *pressed
                 {
-                    *text = String::new();
+                    self.focus_dir = Some(dir);
                 }
-                true
-            });
-
-            if wants_something_focused {
-                ctx.memory_mut(|memory| {
-                    memory.request_focus(self.first_input);
-                });
+                retain
             }
+            _ => true,
+        });
 
-            // Make all inputs ignore focus lock if we want to move focus and command is pressed.
-            if wants_move_focus && raw_input.modifiers.command {
-                ctx.memory_mut(|memory| {
-                    if let Some(id) = memory.focused() {
-                        memory.set_focus_lock_filter(id, EventFilter::default());
-                    }
-                });
+        raw_input.events.retain(|event| {
+            if let egui::Event::Text(text) = event
+                && remove_text_evs.contains(&text.to_ascii_lowercase().as_str())
+            {
+                return false;
             }
-        }
+            true
+        });
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _: &mut eframe::Frame) {
@@ -1185,6 +1256,39 @@ impl eframe::App for App {
                 ui.put(rect, egui::Label::new(label));
             }
         });
+
+        if let Some(mut dir) = self.focus_dir.take() {
+            ui.memory_mut(|m| {
+                // Fine tune direction inputs
+                if let Some(focused) = m.focused() {
+                    if dir == FocusDirection::Left
+                        && let Some(idx) =
+                            self.slider_text_inputs.iter().position(|&id| id == focused)
+                    {
+                        m.request_focus(self.sliders[idx]);
+                        dir = FocusDirection::None;
+                    }
+                    if dir == FocusDirection::Down && focused == self.sliders[3] {
+                        m.request_focus(self.format_dropdown);
+                        dir = FocusDirection::None;
+                    }
+                    if dir == FocusDirection::Up && focused == self.done_button {
+                        m.request_focus(self.format_dropdown);
+                        dir = FocusDirection::None;
+                    }
+                }
+                m.move_focus(dir);
+            });
+        }
+        if self.focus_something {
+            self.focus_something = false;
+            ui.memory_mut(|m| {
+                if m.focused().is_none() {
+                    m.request_focus(self.first_input);
+                    m.move_focus(FocusDirection::None);
+                }
+            });
+        }
     }
 
     fn on_exit(&mut self, gl: Option<&glow::Context>) {
