@@ -18,7 +18,7 @@ jobs:
   build-github-pages:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4 # repo checkout
+      - uses: actions/checkout@v6 # repo checkout
 
       - uses: dtolnay/rust-toolchain@stable
         with:
