@@ -27,12 +27,12 @@ jobs:
             lib_ext: "so"
 
           - build: macos
-            os: macos-15-intel
+            os: macos-26-intel
             target: x86_64-apple-darwin
             lib_ext: "dylib"
 
           - build: macos
-            os: macos-15
+            os: macos-26
             target: aarch64-apple-darwin
             lib_ext: "dylib"
 
@@ -70,7 +70,7 @@ jobs:
           cargo build --release --target ${{ matrix.target }}
           cargo build --lib --release --target ${{ matrix.target }}
         env:
-          MACOSX_DEPLOYMENT_TARGET: 13
+          MACOSX_DEPLOYMENT_TARGET: 15
 
       - name: Build archive
         shell: bash
