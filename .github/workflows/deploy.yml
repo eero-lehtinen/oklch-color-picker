@@ -47,7 +47,7 @@ jobs:
             lib_ext: "dll"
 
     steps:
-      - uses: olegtarasov/get-tag@v2.1.2
+      - uses: olegtarasov/get-tag@v2.1.4
         id: get_version
 
       - uses: actions/checkout@v4
