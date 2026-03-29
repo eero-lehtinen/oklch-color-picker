@@ -20,7 +20,9 @@ crate-type = ["cdylib"]
 
 [dependencies]
 anyhow = "1.0.90"
-bevy_color = { version = "0.15.1", default-features = false }
+bevy_color = { version = "0.18.1", default-features = false, features = [
+	"libm",
+] }
 clap = { version = "4.5.17", features = ["derive"] }
 eframe = { version = "0.34.0", default-features = false, features = [
 	"accesskit",
