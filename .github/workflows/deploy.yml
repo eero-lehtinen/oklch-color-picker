@@ -99,7 +99,7 @@ jobs:
           mv *.${{ matrix.lib_ext }} "parser_lua_module-${{ matrix.target }}.${{ matrix.lib_ext }}"
 
       - name: Upload the binaries
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             ${{ env.ASSET }}
