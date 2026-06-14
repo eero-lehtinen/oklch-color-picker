@@ -24,6 +24,64 @@ use serde::{Deserialize, Serialize};
 use strum::{Display, EnumDiscriminants, EnumString, IntoDiscriminant, IntoEnumIterator};
 use web_time::{Duration, Instant};
 
+fn make_label(ui: &egui::Ui, name: &str, size: Option<f32>) -> egui::WidgetText {
+    let base_size = size.unwrap_or_else(|| {
+        ui.style()
+            .text_styles
+            .get(&egui::TextStyle::Body)
+            .map_or(16.0, |t| t.size)
+    });
+
+    if let Some(idx) = name.find("Lr") {
+        let mut job = egui::text::LayoutJob::default();
+        let text_color = ui.visuals().text_color();
+        let subscript_size = base_size * 0.7;
+
+        let prefix = &name[..idx + 1];
+        let suffix = &name[idx + 2..];
+
+        if !prefix.is_empty() {
+            job.append(
+                prefix,
+                0.0,
+                egui::text::TextFormat {
+                    font_id: egui::FontId::new(base_size, egui::FontFamily::Proportional),
+                    color: text_color,
+                    ..Default::default()
+                },
+            );
+        }
+        job.append(
+            "r",
+            0.0,
+            egui::text::TextFormat {
+                font_id: egui::FontId::new(subscript_size, egui::FontFamily::Proportional),
+                color: text_color,
+                valign: egui::Align::BOTTOM,
+                ..Default::default()
+            },
+        );
+        if !suffix.is_empty() {
+            job.append(
+                suffix,
+                0.0,
+                egui::text::TextFormat {
+                    font_id: egui::FontId::new(base_size, egui::FontFamily::Proportional),
+                    color: text_color,
+                    ..Default::default()
+                },
+            );
+        }
+        job.into()
+    } else {
+        let mut rich = egui::RichText::new(name);
+        if let Some(s) = size {
+            rich = rich.size(s);
+        }
+        rich.into()
+    }
+}
+
 fn setup_egui_config(ctx: &egui::Context) {
     let mut fonts = egui::FontDefinitions::default();
 
@@ -409,7 +467,7 @@ pub struct App {
     programs: HashMap<ProgramKind, Arc<Mutex<GlowProgram>>>,
     input_text: HashMap<u8, String>,
     first_frame: bool,
-    frame_end_labels: Vec<(Rect, RichText)>,
+    frame_end_labels: Vec<(Rect, egui::WidgetText)>,
     fallbacks: Fallbacks,
     copied_notice: Option<Instant>,
     first_input: Id,
@@ -535,7 +593,7 @@ impl App {
              rect: Rect,
              pos: f32,
              name: &str,
-             labels: &mut Vec<(Rect, RichText)>| {
+             labels: &mut Vec<(Rect, egui::WidgetText)>| {
                 let width = 1.;
                 let color = LINE_COLOR_DARK;
                 let border = 5.5;
@@ -554,7 +612,7 @@ impl App {
                         let label_center = Pos2::new(pos, rect.bottom() + 5.);
                         let label_rect =
                             egui::Rect::from_center_size(label_center, egui::vec2(20.0, 10.0));
-                        labels.push((label_rect, name.into()));
+                        labels.push((label_rect, make_label(ui, name, None)));
                     }
                 } else {
                     let pos = lerp(rect.bottom(), rect.top(), pos);
@@ -569,7 +627,7 @@ impl App {
                         let label_center = Pos2::new(rect.left() - 10., pos - 6.);
                         let label_rect =
                             egui::Rect::from_center_size(label_center, egui::vec2(10.0, 10.0));
-                        labels.push((label_rect, name.into()));
+                        labels.push((label_rect, make_label(ui, name, None)));
                     }
                 }
             };
@@ -703,7 +761,7 @@ impl App {
 
         let input_size = Vec2::new(68., 26.);
         let show_label = |ui: &mut egui::Ui, label: &str| {
-            let label = egui::Label::new(label);
+            let label = egui::Label::new(make_label(ui, label, None));
             ui.add_sized(Vec2::new(12., 26.), label);
         };
         builder.sizes(Size::remainder(), 4).vertical(|mut strip| {
@@ -1218,11 +1276,11 @@ impl eframe::App for App {
                             ui.style_mut().spacing.button_padding = egui::vec2(16.0, 3.0);
 
                             for (d, s) in [
-                                (CurrentColorsDiscriminants::Oklrch, "OKLCH"),
+                                (CurrentColorsDiscriminants::Oklrch, "OKLrCH"),
                                 (CurrentColorsDiscriminants::Okhsv, "OKHSV"),
                             ] {
                                 let is_current = self.colors.discriminant() == d;
-                                let text = RichText::new(s).size(18.);
+                                let text = make_label(ui, s, Some(18.0));
                                 if Button::selectable(is_current, text).ui(ui).clicked() {
                                     self.colors.convert(d);
                                 }
