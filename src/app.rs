@@ -1273,6 +1273,10 @@ impl eframe::App for App {
                         ui.horizontal(|ui| {
                             ui.allocate_space(Vec2::new(8., 0.));
                             ui.style_mut().visuals.selection.bg_fill = Color32::from_gray(50);
+                            ui.style_mut().visuals.widgets.inactive.bg_fill = Color32::TRANSPARENT;
+                            ui.style_mut().visuals.widgets.inactive.weak_bg_fill =
+                                Color32::TRANSPARENT;
+                            ui.style_mut().visuals.widgets.inactive.bg_stroke = egui::Stroke::NONE;
                             ui.style_mut().spacing.button_padding = egui::vec2(16.0, 3.0);
 
                             for (d, s) in [
@@ -1281,7 +1285,11 @@ impl eframe::App for App {
                             ] {
                                 let is_current = self.colors.discriminant() == d;
                                 let text = make_label(ui, s, Some(18.0));
-                                if Button::selectable(is_current, text).ui(ui).clicked() {
+                                if Button::selectable(is_current, text)
+                                    .frame_when_inactive(true)
+                                    .ui(ui)
+                                    .clicked()
+                                {
                                     self.colors.convert(d);
                                 }
                             }
