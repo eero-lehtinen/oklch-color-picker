@@ -920,6 +920,10 @@ impl App {
                 .truncate()
                 .selected_text(self.format.to_string())
                 .height(500.)
+                // Without this, hovering an item resizes it and flashes a scrollbar.
+                .popup_style(egui::style::StyleModifier::new(|style| {
+                    style.visuals.widgets.inactive.bg_stroke = egui::Stroke::NONE;
+                }))
                 .show_ui(ui, |ui| {
                     for format in ColorFormat::iter() {
                         ui.selectable_value(&mut self.format, format, format.to_string());
