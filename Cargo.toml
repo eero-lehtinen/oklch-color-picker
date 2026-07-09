@@ -56,7 +56,7 @@ serde = { version = "1.0.219", features = ["derive"] }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 interprocess = { version = "2.2.1", features = ["tokio"] }
 tokio = "1.40.0"
-mlua = { version = "0.11.0", features = ["module", "luajit"] }
+mlua = { version = "0.12.0", features = ["module", "luajit"] }
 image = { version = "0.25.5", default-features = false, features = ["png"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
