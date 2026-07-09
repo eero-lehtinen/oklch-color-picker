@@ -24,7 +24,7 @@ bevy_color = { version = "0.18.1", default-features = false, features = [
 	"libm",
 ] }
 clap = { version = "4.5.17", features = ["derive"] }
-eframe = { version = "0.34.0", default-features = false, features = [
+eframe = { version = "0.35.0", default-features = false, features = [
 	"accesskit",
 	"glow",
 	"wayland",
@@ -32,11 +32,11 @@ eframe = { version = "0.34.0", default-features = false, features = [
 	"persistence",
 	"web_screen_reader",
 ] }
-egui = { version = "0.34.0", default-features = false, features = [
+egui = { version = "0.35.0", default-features = false, features = [
 	"rayon",
 	"persistence",
 ] }
-egui_extras = { version = "0.34.0", default-features = false, features = [
+egui_extras = { version = "0.35.0", default-features = false, features = [
 	"serde",
 	"svg",
 ] }

@@ -1,3 +1,4 @@
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
 use crate::gamut::{Okhsva, Oklrcha, clamp_rgba, gamut_clip_preserve_chroma};
@@ -10,11 +11,10 @@ use crate::{lerp, map};
 use bevy_color::{Color, ColorToComponents, ColorToPacked, LinearRgba, Oklaba, Oklcha, Srgba};
 use eframe::Storage;
 use eframe::{
-    egui::{self, Color32, DragValue, Pos2, RichText, Stroke, Vec2, ahash::HashMap},
+    egui::{self, Color32, DragValue, Pos2, RichText, Stroke, Vec2},
     egui_glow,
     glow::{self},
 };
-use egui::ahash::HashSet;
 use egui::{
     Align2, Button, EventFilter, FocusDirection, Id, Key, Margin, PopupAnchor, Rect, Response,
     Sense, Ui, UiBuilder, Widget,
@@ -1264,7 +1264,7 @@ impl eframe::App for App {
 
         self.calculate_fallbacks();
 
-        central_panel.show_inside(ui, |ui| {
+        central_panel.show(ui, |ui| {
             StripBuilder::new(ui)
                 .size(Size::exact(30.))
                 .size(Size::remainder())
