@@ -302,26 +302,25 @@
      </div> 
 
     <script>
-      // ALlow vim like navigation with h, j, k, l without activating the browser's default shortcuts.
+      function preventBrowserShortcuts(event) {
+        const isCtrl = event.ctrlKey || event.metaKey; // Ctrl on Windows/Linux, Cmd on Mac
+        const isVimNavigation = isCtrl && ["h", "j", "k", "l"].includes(event.key);
+        const isTabShortcut = ["F1", "F2"].includes(event.key);
+        if (isVimNavigation || isTabShortcut) {
+          event.preventDefault();
+        }
+      }
+
+      // Keep application shortcuts from activating browser shortcuts.
       document
         .getElementById("the_canvas_id")
-        .addEventListener("keydown", (event) => {
-          const isCtrl = event.ctrlKey || event.metaKey; // Ctrl on Windows/Linux, Cmd on Mac
-          if (isCtrl && ["h", "j", "k", "l"].includes(event.key)) {
-            event.preventDefault();
-          }
-        });
+        .addEventListener("keydown", preventBrowserShortcuts);
       // Do the same thing for the listener input created dynamically by egui.
       const observer = new MutationObserver((mutationsList) => {
         for (const mutation of mutationsList) {
           for (const node of mutation.addedNodes) {
             if (node.nodeType === Node.ELEMENT_NODE && node.matches('input')) {
-              node.addEventListener("keydown", (event) => {
-                const isCtrl = event.ctrlKey || event.metaKey; // Ctrl on Windows/Linux, Cmd on Mac
-                if (isCtrl && ["h", "j", "k", "l"].includes(event.key)) {
-                  event.preventDefault();
-                }
-              });
+              node.addEventListener("keydown", preventBrowserShortcuts);
               observer.disconnect();
               return;
             }
