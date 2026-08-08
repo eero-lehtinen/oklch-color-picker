@@ -1149,12 +1149,16 @@ impl eframe::App for App {
         let text_input_focused =
             ctx.memory(|m| m.focused().is_some_and(|id| self.text_inputs.contains(&id)));
 
-        let ctrl = raw_input.modifiers.command;
-
         let mut remove_text_evs = Vec::new();
 
         raw_input.events.retain_mut(|event| match event {
-            egui::Event::Key { key, pressed, .. } => {
+            egui::Event::Key {
+                key,
+                pressed,
+                modifiers,
+                ..
+            } => {
+                let ctrl = modifiers.command;
                 let mut focus_dir = None;
                 let mut retain = true;
                 if matches!(
