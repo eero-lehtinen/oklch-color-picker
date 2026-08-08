@@ -968,6 +968,7 @@ impl App {
                         ("d", "Done (print result to console)"),
                         ("←/↓/↑/→", "Move focus or control input"),
                         ("h/j/k/l", "Move focus or control input (Vim style)"),
+                        ("F1/F2", "Switch color model tabs"),
                         ("1/2", "Switch focus to pickers"),
                         ("3/4/5/6", "Switch focus to sliders"),
                         ("Tab/S-Tab", "Cycle focus"),
@@ -1287,17 +1288,17 @@ impl eframe::App for App {
                             ui.style_mut().visuals.widgets.inactive.bg_stroke = egui::Stroke::NONE;
                             ui.style_mut().spacing.button_padding = egui::vec2(16.0, 3.0);
 
-                            for (d, s) in [
-                                (CurrentColorsDiscriminants::Oklrch, "OKLrCH"),
-                                (CurrentColorsDiscriminants::Okhsv, "OKHSV"),
+                            for (d, s, hotkey) in [
+                                (CurrentColorsDiscriminants::Oklrch, "OKLrCH", Key::F1),
+                                (CurrentColorsDiscriminants::Okhsv, "OKHSV", Key::F2),
                             ] {
                                 let is_current = self.colors.discriminant() == d;
                                 let text = make_label(ui, s, Some(18.0));
-                                if Button::selectable(is_current, text)
+                                let clicked = Button::selectable(is_current, text)
                                     .frame_when_inactive(true)
                                     .ui(ui)
-                                    .clicked()
-                                {
+                                    .clicked();
+                                if clicked || self.hotkey(ui, hotkey) {
                                     self.colors.convert(d);
                                 }
                             }
