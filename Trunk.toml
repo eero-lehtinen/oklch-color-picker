@@ -1,2 +1,6 @@
 [build]
+cargo_profile = "wasm-release"
 no_sri = true
+
+[tools]
+wasm_opt = "version_131"
