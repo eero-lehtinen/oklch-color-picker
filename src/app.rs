@@ -24,6 +24,22 @@ use serde::{Deserialize, Serialize};
 use strum::{Display, EnumDiscriminants, EnumString, IntoDiscriminant, IntoEnumIterator};
 use web_time::{Duration, Instant};
 
+fn color_format_display_name(format: ColorFormat) -> &'static str {
+    match format {
+        ColorFormat::Hex => "HEX",
+        ColorFormat::Oklch => "OKLCH",
+        ColorFormat::Rgb => "RGB",
+        ColorFormat::Hsl => "HSL",
+        ColorFormat::RgbLegacy => "RGB (legacy)",
+        ColorFormat::HslLegacy => "HSL (legacy)",
+        ColorFormat::HexLiteral => "Hex literal",
+        ColorFormat::RawRgb => "Raw RGB (integer)",
+        ColorFormat::RawRgbFloat => "Raw RGB (float)",
+        ColorFormat::RawRgbLinear => "Raw RGB (linear)",
+        ColorFormat::RawOklch => "Raw OKLCH",
+    }
+}
+
 fn make_label(ui: &egui::Ui, name: &str, size: Option<f32>) -> egui::WidgetText {
     let base_size = size.unwrap_or_else(|| {
         ui.style()
@@ -918,7 +934,7 @@ impl App {
             egui::ComboBox::from_id_salt("format")
                 .width(ui.available_width().min(190.))
                 .truncate()
-                .selected_text(self.format.to_string())
+                .selected_text(color_format_display_name(self.format))
                 .height(500.)
                 // Without this, hovering an item resizes it and flashes a scrollbar.
                 .popup_style(egui::style::StyleModifier::new(|style| {
@@ -926,7 +942,11 @@ impl App {
                 }))
                 .show_ui(ui, |ui| {
                     for format in ColorFormat::iter() {
-                        ui.selectable_value(&mut self.format, format, format.to_string());
+                        ui.selectable_value(
+                            &mut self.format,
+                            format,
+                            color_format_display_name(format),
+                        );
                     }
                 }).response.id;
 
