@@ -1,39 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-
-  <!-- Disable zooming: -->
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=0.8, user-scalable=no"
-  />
-
   <head>
+    <meta charset="utf-8" />
+    <!-- Disable zooming: -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=0.8, user-scalable=no"
+    />
     <title>Oklch Color Picker</title>
     <meta
       name="description"
       content="Pick colors in Oklch, a new color model designed for human vision. Convert to HEX, RGB, HSL, and more. Ideal for designers and developers."
     />
-    <meta name="theme-color" content="#000"/>
+    <meta name="theme-color" content="#1a1a1a" />
+    <link rel="canonical" href="https://oklch.eerolehtinen.fi/" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Oklch Color Picker",
+        "url": "https://oklch.eerolehtinen.fi/"
+      }
+    </script>
 
     <link data-trunk rel="rust" data-wasm-opt="2" data-bin="oklch-color-picker"/>
     <base data-trunk-public-url />
 
     <link data-trunk rel="copy-file" href="assets/favicon.ico" />
-    <link rel="icon" href="favicon.ico" sizes="any" />
     <link data-trunk rel="copy-file" href="assets/icon-192.png" />
-    <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192" />
+    <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
     <link data-trunk rel="copy-file" href="assets/apple-touch-icon.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
     <link data-trunk rel="copy-file" href="assets/sw.js" />
+    <link data-trunk rel="copy-file" href="assets/robots.txt" />
     <link data-trunk rel="copy-file" href="assets/manifest.json"/>
     <link data-trunk rel="copy-file" href="assets/icon-512.png" />
-    <link rel="manifest" href="manifest.json" />
+    <link rel="manifest" href="/manifest.json" />
 
     <link data-trunk rel="copy-file" href="assets/github-mark.svg" data-target-path="assets"/>
     <link data-trunk rel="copy-file" href="assets/fullscreen.svg" data-target-path="assets"/>
-    <meta name="theme-color" content="#1a1a1a" />
 
     <style>
       @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&display=swap');

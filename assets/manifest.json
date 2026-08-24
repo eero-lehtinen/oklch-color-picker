@@ -1,24 +1,24 @@
 {
-  "name": "Oklch Color Picker PWA",
-  "short_name": "oklch-color-picker-pwa",
+  "name": "Oklch Color Picker",
+  "short_name": "Oklch Picker",
   "icons": [
     {
-      "src": "./icon-192.png",
+      "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any"
     },
     {
-      "src": "./icon-512.png",
+      "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any"
     }
   ],
   "lang": "en-US",
-  "id": "/index.html",
-  "start_url": "./index.html",
+  "id": "/",
+  "start_url": "/",
   "display": "standalone",
-  "background_color": "white",
-  "theme_color": "white"
+  "background_color": "#0e0e0e",
+  "theme_color": "#1a1a1a"
 }
