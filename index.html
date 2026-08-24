@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -57,17 +57,37 @@
     <link data-trunk rel="copy-file" href="assets/sw.js" />
     <link data-trunk rel="copy-file" href="assets/_headers" />
     <link data-trunk rel="copy-file" href="assets/robots.txt" />
-    <link data-trunk rel="copy-file" href="assets/manifest.json"/>
+    <link data-trunk rel="copy-file" href="assets/manifest.json" />
     <link data-trunk rel="copy-file" href="assets/icon-512.png" />
     <link rel="manifest" href="/manifest.json" />
 
-    <link data-trunk rel="copy-file" href="assets/fullscreen.svg" data-target-path="assets"/>
-    <link data-trunk rel="copy-file" href="assets/fullscreen-exit.svg" data-target-path="assets"/>
-    <link data-trunk rel="copy-file" href="assets/info.svg" data-target-path="assets"/>
-    <link data-trunk rel="copy-file" href="assets/link.svg" data-target-path="assets"/>
+    <link
+      data-trunk
+      rel="copy-file"
+      href="assets/fullscreen.svg"
+      data-target-path="assets"
+    />
+    <link
+      data-trunk
+      rel="copy-file"
+      href="assets/fullscreen-exit.svg"
+      data-target-path="assets"
+    />
+    <link
+      data-trunk
+      rel="copy-file"
+      href="assets/info.svg"
+      data-target-path="assets"
+    />
+    <link
+      data-trunk
+      rel="copy-file"
+      href="assets/link.svg"
+      data-target-path="assets"
+    />
 
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&display=swap');
+      @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&display=swap");
 
       * {
         box-sizing: border-box;
@@ -83,14 +103,12 @@
         font-family: "IBM Plex Sans", sans-serif;
         font-optical-sizing: auto;
         font-style: normal;
-        font-variation-settings:
-          "wdth" 100;
+        font-variation-settings: "wdth" 100;
       }
 
       html {
         /* Remove touch delay: */
         touch-action: manipulation;
-
       }
 
       body {
@@ -101,8 +119,8 @@
       html,
       body {
         position: relative;
-        margin: 0 !important;
-        padding: 0 !important;
+        margin: 0;
+        padding: 0;
         min-height: 100%;
         width: 100%;
       }
@@ -402,11 +420,11 @@
 
       .format-list {
         list-style: none;
-        padding: 0 !important;
       }
 
       .content .format-list {
         margin-top: 10px;
+        padding: 0;
       }
 
       .format-group {
@@ -536,8 +554,8 @@
         font-size: 1.1rem;
       }
 
-      .section-marker {
-        margin-bottom: 32px !important;
+      .content .section-marker {
+        margin-bottom: 32px;
         text-align: center;
         color: #777777;
         font-size: 1.1rem;
@@ -622,7 +640,6 @@
         height: 100%;
       }
 
-
       .centered {
         margin-right: auto;
         margin-left: auto;
@@ -704,8 +721,8 @@
           <div class="canvas-wrapper2 small">
             <canvas id="the_canvas_id">
               Use the controls in the
-              <a href="#guide">OKLCH color picker guide</a> if your browser
-              cannot display the interactive picker.
+              <a href="#guide">OKLCH color picker guide</a>
+              if your browser cannot display the interactive picker.
             </canvas>
             <div class="centered" id="loading_text">
               <p style="font-size: 16px">Loading…</p>
@@ -727,12 +744,13 @@
             >
           </h2>
           <p class="content-lede">
-            Choose colors with two perceptual, OKLab-based editing models:
-            OKL<sub>r</sub>CH for lightness, chroma, and hue, or OKHSV for
-            familiar saturation and value controls. Copy the result as HEX,
-            RGB, HSL, OKLCH, or raw component values. The picker supports alpha
-            transparency and creates sRGB fallbacks for out-of-gamut colors.
-            Color processing happens locally in your browser.
+            Choose colors with two perceptual, OKLab-based editing models: OKL<sub
+              >r</sub
+            >CH for lightness, chroma, and hue, or OKHSV for familiar saturation
+            and value controls. Copy the result as HEX, RGB, HSL, OKLCH, or raw
+            component values. The picker supports alpha transparency and creates
+            sRGB fallbacks for out-of-gamut colors. Color processing happens
+            locally in your browser.
           </p>
         </section>
 
@@ -749,24 +767,25 @@
             <li>
               Choose <strong>OKL<sub>r</sub>CH</strong> for direct control over
               perceptual lightness, chroma, and hue, or
-              <strong>OKHSV</strong> for familiar hue-saturation-value controls
-              that stay within sRGB.
+              <strong>OKHSV</strong>
+              for familiar hue-saturation-value controls that stay within sRGB.
             </li>
             <li>
               Select a color with the two-dimensional picker and sliders, or
               enter exact component values.
             </li>
             <li>
-              Compare <strong>Previous Color</strong>, which keeps the color
-              you started with, against <strong>New Color</strong>, which shows
-              your current edits.
+              Compare <strong>Previous Color</strong>, which keeps the color you
+              started with, against <strong>New Color</strong>, which shows your
+              current edits.
             </li>
             <li>
               Choose an output format and include an alpha value when needed.
             </li>
             <li>
               Click <strong>Copy to clipboard</strong> or press
-              <kbd>C</kbd> to copy the result.
+              <kbd>C</kbd>
+              to copy the result.
             </li>
           </ol>
         </section>
@@ -783,8 +802,8 @@
           <p>
             The format menu controls how <strong>New Color</strong> is parsed
             and how the current color is copied. Switching formats changes its
-            text representation, not the color or its OKL<sub>r</sub>CH or
-            OKHSV editing controls.
+            text representation, not the color or its OKL<sub>r</sub>CH or OKHSV
+            editing controls.
           </p>
           <section class="format-group" aria-labelledby="css-formats">
             <h3 id="css-formats">
@@ -854,101 +873,101 @@
               >
             </h3>
             <p>
-              Raw formats are useful in source code, graphics APIs, shaders,
-              and color calculations.
+              Raw formats are useful in source code, graphics APIs, shaders, and
+              color calculations.
             </p>
             <ul class="format-list">
-            <li style="--format-color: oklch(72% 0.1269 185 / 80%)">
-              <span class="color-swatch" aria-hidden="true"></span>
-              <strong>Hex literal</strong>
-              <span class="format-examples"><code>0xCC00BEAF</code></span>
-            </li>
-            <li style="--format-color: oklch(72% 0.13 225 / 80%)">
-              <span class="color-swatch" aria-hidden="true"></span>
-              <strong
-                >Raw RGB (<span class="term-with-tooltip"
-                  ><button
-                    type="button"
-                    class="term-trigger"
-                    aria-describedby="integer-rgb-tooltip"
-                  >
-                    integer</button
-                  ><span
-                    class="term-tooltip"
-                    id="integer-rgb-tooltip"
-                    role="tooltip"
-                    >Whole-number sRGB components from 0 to 255. Alpha uses the
-                    same range when included.</span
-                  ></span
-                >)</strong
-              >
-              <span class="format-examples">
-                <code>34, 181, 225, 204</code>
-              </span>
-            </li>
-            <li style="--format-color: oklch(72% 0.13 265 / 80%)">
-              <span class="color-swatch" aria-hidden="true"></span>
-              <strong
-                >Raw RGB (<span class="term-with-tooltip"
-                  ><button
-                    type="button"
-                    class="term-trigger"
-                    aria-describedby="float-rgb-tooltip"
-                  >
-                    floating point</button
-                  ><span
-                    class="term-tooltip"
-                    id="float-rgb-tooltip"
-                    role="tooltip"
-                    >sRGB components normalized from 0 to 1 instead of stored
-                    as bytes. Alpha uses the same range when included.</span
-                  ></span
-                >)</strong
-              >
-              <span class="format-examples">
-                <code>0.4879, 0.6354, 0.9651, 0.8</code>
-              </span>
-            </li>
-            <li style="--format-color: oklch(72% 0.13 305 / 80%)">
-              <span class="color-swatch" aria-hidden="true"></span>
-              <strong
-                >Raw RGB (<span class="term-with-tooltip"
-                  ><button
-                    type="button"
-                    class="term-trigger"
-                    aria-describedby="linear-rgb-tooltip"
-                  >
-                    linear</button
-                  ><span
-                    class="term-tooltip"
-                    id="linear-rgb-tooltip"
-                    role="tooltip"
-                    ><span class="term-tooltip-paragraph">
-                      Linear RGB omits gamma correction, so its values are
-                      proportional to light. This makes it useful for
-                      blending, lighting, filtering, and other graphics
-                      calculations.
-                    </span>
-                    <span class="term-tooltip-paragraph">
-                      sRGB uses gamma correction: its nonlinear curve roughly
-                      follows human brightness perception and gives darker
-                      tones more numeric precision. CSS, common image
-                      formats, and most displays use sRGB values.
-                    </span></span
-                  ></span
-                >)</strong
-              >
-              <span class="format-examples">
-                <code>0.4769, 0.273, 0.7889, 0.8</code>
-              </span>
-            </li>
-            <li style="--format-color: oklch(72% 0.13 345 / 80%)">
-              <span class="color-swatch" aria-hidden="true"></span>
-              <strong>Raw OKLCH</strong>
-              <span class="format-examples">
-                <code>0.72, 0.13, 345.0, 0.8</code>
-              </span>
-            </li>
+              <li style="--format-color: oklch(72% 0.1269 185 / 80%)">
+                <span class="color-swatch" aria-hidden="true"></span>
+                <strong>Hex literal</strong>
+                <span class="format-examples"><code>0xCC00BEAF</code></span>
+              </li>
+              <li style="--format-color: oklch(72% 0.13 225 / 80%)">
+                <span class="color-swatch" aria-hidden="true"></span>
+                <strong
+                  >Raw RGB (<span class="term-with-tooltip"
+                    ><button
+                      type="button"
+                      class="term-trigger"
+                      aria-describedby="integer-rgb-tooltip"
+                    >
+                      integer
+                    </button><span
+                      class="term-tooltip"
+                      id="integer-rgb-tooltip"
+                      role="tooltip"
+                      >Whole-number sRGB components from 0 to 255. Alpha uses
+                      the same range when included.</span
+                    ></span
+                  >)</strong
+                >
+                <span class="format-examples">
+                  <code>34, 181, 225, 204</code>
+                </span>
+              </li>
+              <li style="--format-color: oklch(72% 0.13 265 / 80%)">
+                <span class="color-swatch" aria-hidden="true"></span>
+                <strong
+                  >Raw RGB (<span class="term-with-tooltip"
+                    ><button
+                      type="button"
+                      class="term-trigger"
+                      aria-describedby="float-rgb-tooltip"
+                    >
+                      floating point
+                    </button><span
+                      class="term-tooltip"
+                      id="float-rgb-tooltip"
+                      role="tooltip"
+                      >sRGB components normalized from 0 to 1 instead of stored
+                      as bytes. Alpha uses the same range when included.</span
+                    ></span
+                  >)</strong
+                >
+                <span class="format-examples">
+                  <code>0.4879, 0.6354, 0.9651, 0.8</code>
+                </span>
+              </li>
+              <li style="--format-color: oklch(72% 0.13 305 / 80%)">
+                <span class="color-swatch" aria-hidden="true"></span>
+                <strong
+                  >Raw RGB (<span class="term-with-tooltip"
+                    ><button
+                      type="button"
+                      class="term-trigger"
+                      aria-describedby="linear-rgb-tooltip"
+                    >
+                      linear
+                    </button><span
+                      class="term-tooltip"
+                      id="linear-rgb-tooltip"
+                      role="tooltip"
+                      ><span class="term-tooltip-paragraph">
+                        Linear RGB omits gamma correction, so its values are
+                        proportional to light. This makes it useful for
+                        blending, lighting, filtering, and other graphics
+                        calculations.
+                      </span>
+                      <span class="term-tooltip-paragraph">
+                        sRGB uses gamma correction: its nonlinear curve roughly
+                        follows human brightness perception and gives darker
+                        tones more numeric precision. CSS, common image formats,
+                        and most displays use sRGB values.
+                      </span></span
+                    ></span
+                  >)</strong
+                >
+                <span class="format-examples">
+                  <code>0.4769, 0.273, 0.7889, 0.8</code>
+                </span>
+              </li>
+              <li style="--format-color: oklch(72% 0.13 345 / 80%)">
+                <span class="color-swatch" aria-hidden="true"></span>
+                <strong>Raw OKLCH</strong>
+                <span class="format-examples">
+                  <code>0.72, 0.13, 345.0, 0.8</code>
+                </span>
+              </li>
             </ul>
           </section>
         </section>
@@ -963,31 +982,37 @@
             >
           </h2>
           <p>
-            <strong>OKLab</strong> models perceived lightness, chroma, and hue
-            more closely than RGB-derived HSV, reducing unexpected shifts in
-            apparent lightness while editing. It uses a lightness axis
-            (<var>L</var>) and two opponent-color axes (<var>a</var> and
+            <strong>OKLab</strong>
+            models perceived lightness, chroma, and hue more closely than
+            RGB-derived HSV, reducing unexpected shifts in apparent lightness
+            while editing. It uses a lightness axis (<var>L</var>) and two
+            opponent-color axes (<var>a</var>
+            and
             <var>b</var>). Björn Ottosson derived the model in
             <a href="https://bottosson.github.io/posts/oklab/"
               ><cite>A perceptual color space for image processing</cite></a
             >.
           </p>
           <p>
-            <strong>OKLCH</strong> describes the same OKLab colors with
-            cylindrical coordinates. <var>L</var> remains lightness,
-            <var>C</var> is the distance from the neutral axis, and
-            <var>H</var> is its angle. This makes chroma and hue direct controls;
-            converting between OKLab and OKLCH changes only the coordinates.
-            The tradeoff is an irregular sRGB boundary: some combinations of
-            lightness, chroma, and hue fall outside it.
+            <strong>OKLCH</strong>
+            describes the same OKLab colors with cylindrical coordinates.
+            <var>L</var>
+            remains lightness,
+            <var>C</var>
+            is the distance from the neutral axis, and
+            <var>H</var>
+            is its angle. This makes chroma and hue direct controls; converting
+            between OKLab and OKLCH changes only the coordinates. The tradeoff
+            is an irregular sRGB boundary: some combinations of lightness,
+            chroma, and hue fall outside it.
           </p>
           <p>
-            <strong>OKHSV</strong> remaps that boundary into an HSV-like
-            cylinder, keeping every control combination in sRGB and maximum
-            saturation at the edge. The familiar shape sacrifices some
-            perceptual uniformity, but hue tracks perception better than in
-            regular HSV. OKHSV is an editing model, not a CSS format. Ottosson
-            derived it alongside OKHSL in
+            <strong>OKHSV</strong>
+            remaps that boundary into an HSV-like cylinder, keeping every
+            control combination in sRGB and maximum saturation at the edge. The
+            familiar shape sacrifices some perceptual uniformity, but hue tracks
+            perception better than in regular HSV. OKHSV is an editing model,
+            not a CSS format. Ottosson derived it alongside OKHSL in
             <a href="https://bottosson.github.io/posts/colorpicker/"
               ><cite>Two new color spaces for color picking</cite></a
             >.
@@ -1005,11 +1030,13 @@
           </h2>
           <p>
             OKLab has no reference white, making it scale independent across
-            dynamic ranges but less accurate for a fixed-range color picker.
-            OKL<sub>r</sub>CH instead uses the
+            dynamic ranges but less accurate for a fixed-range color picker. OKL<sub
+              >r</sub
+            >CH instead uses the
             <a
               href="https://bottosson.github.io/posts/colorpicker/#intermission---a-new-lightness-estimate-for-oklab"
-              ><var>L<sub>r</sub></var> estimate proposed by OKLab's author</a
+              ><var>L<sub>r</sub></var>
+              estimate proposed by OKLab's author</a
             >, which follows CIELab lightness more closely and improves control
             over dark colors without changing chroma or hue.
           </p>
@@ -1032,9 +1059,9 @@
           </h2>
           <p>
             OKLCH can describe colors that the picker's sRGB preview and output
-            cannot represent. Clamping red, green, and blue separately can
-            cause large hue shifts, so the picker instead keeps hue fixed and
-            reduces chroma only to the sRGB boundary. This follows the
+            cannot represent. Clamping red, green, and blue separately can cause
+            large hue shifts, so the picker instead keeps hue fixed and reduces
+            chroma only to the sRGB boundary. This follows the
             <a href="https://bottosson.github.io/posts/gamutclipping/"
               >OKLab gamut-clipping method described by Ottosson</a
             >. Colors changed this way are marked <strong>fallback</strong>.
@@ -1065,9 +1092,11 @@
           </p>
           <p>
             OKLCH Color Picker is also available as a
-            <a href="https://github.com/eero-lehtinen/oklch-color-picker#installation"
+            <a
+              href="https://github.com/eero-lehtinen/oklch-color-picker#installation"
               >native command-line application</a
-            > for conversions in scripts and terminal workflows.
+            >
+            for conversions in scripts and terminal workflows.
           </p>
           <p>
             It also powers the
@@ -1136,7 +1165,8 @@
     <script>
       function preventBrowserShortcuts(event) {
         const isCtrl = event.ctrlKey || event.metaKey; // Ctrl on Windows/Linux, Cmd on Mac
-        const isVimNavigation = isCtrl && ["h", "j", "k", "l"].includes(event.key);
+        const isVimNavigation =
+          isCtrl && ["h", "j", "k", "l"].includes(event.key);
         const isTabShortcut = ["F1", "F2"].includes(event.key);
         if (isVimNavigation || isTabShortcut) {
           event.preventDefault();
@@ -1150,29 +1180,27 @@
 
       // Egui prevents the default wheel action on its canvas. Forward vertical
       // wheel movement so users can continue scrolling to the page content.
-      document
-        .getElementById("the_canvas_id")
-        .addEventListener(
-          "wheel",
-          (event) => {
-            if (!event.ctrlKey && event.deltaY !== 0) {
-              const scale =
-                event.deltaMode === WheelEvent.DOM_DELTA_LINE
-                  ? 16
-                  : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
-                    ? window.innerHeight
-                    : 1;
-              window.scrollBy(0, event.deltaY * scale);
-            }
-          },
-          { passive: true },
-        );
+      document.getElementById("the_canvas_id").addEventListener(
+        "wheel",
+        (event) => {
+          if (!event.ctrlKey && event.deltaY !== 0) {
+            const scale =
+              event.deltaMode === WheelEvent.DOM_DELTA_LINE
+                ? 16
+                : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+                  ? window.innerHeight
+                  : 1;
+            window.scrollBy(0, event.deltaY * scale);
+          }
+        },
+        { passive: true },
+      );
 
       // Do the same thing for the listener input created dynamically by egui.
       const observer = new MutationObserver((mutationsList) => {
         for (const mutation of mutationsList) {
           for (const node of mutation.addedNodes) {
-            if (node.nodeType === Node.ELEMENT_NODE && node.matches('input')) {
+            if (node.nodeType === Node.ELEMENT_NODE && node.matches("input")) {
               node.addEventListener("keydown", preventBrowserShortcuts);
               observer.disconnect();
               return;
@@ -1182,7 +1210,7 @@
       });
       observer.observe(document.body, {
         childList: true,
-        subtree: false
+        subtree: false,
       });
 
       function scrollToCurrentHash() {
@@ -1203,7 +1231,9 @@
         const hashObserver = new MutationObserver(() => {
           if (!loadingText.isConnected) {
             hashObserver.disconnect();
-            requestAnimationFrame(() => requestAnimationFrame(scrollToCurrentHash));
+            requestAnimationFrame(() =>
+              requestAnimationFrame(scrollToCurrentHash),
+            );
           }
         });
         hashObserver.observe(loadingText.parentNode, { childList: true });
@@ -1241,7 +1271,9 @@
       }
 
       function toggleZoom() {
-        const canvasClasses = document.querySelector("div.canvas-wrapper2").classList;
+        const canvasClasses = document.querySelector(
+          "div.canvas-wrapper2",
+        ).classList;
         const zoomButton = document.querySelector("button.fullscreen-button");
         zoomed = !zoomed;
         if (zoomed) {
@@ -1255,7 +1287,7 @@
 
       // We disable caching during development so that we always view the latest version.
       if ("serviceWorker" in navigator && window.location.hash !== "#dev") {
-        window.addEventListener("load", function () {
+        window.addEventListener("load", () => {
           navigator.serviceWorker.register("sw.js");
         });
       }
