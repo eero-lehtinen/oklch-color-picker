@@ -6,5 +6,5 @@ wasm_opt = "version_131"
 
 [[hooks]]
 stage = "post_build"
-command = "npm"
-command_arguments = ["run", "build:service-worker"]
+command = "node"
+command_arguments = ["scripts/build-service-worker.mjs"]
