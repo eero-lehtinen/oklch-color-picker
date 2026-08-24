@@ -19,11 +19,12 @@ fn main() -> ExitCode {
     use clap::Parser as _;
     use cli::Cli;
     use egui::{Vec2, ViewportBuilder};
-    use formats::{parse_color, parse_color_unknown_format};
+    use formats::{format_color, parse_color, parse_color_unknown_format};
 
     log_startup::init();
 
     let cli = Cli::parse();
+    let convert_to = cli.convert_to;
 
     log_startup::log("Cli parse");
 
@@ -51,6 +52,12 @@ fn main() -> ExitCode {
     };
     log_startup::log("Color parse");
 
+    if let Some(output_format) = convert_to {
+        let fallback = gamut_clip_preserve_chroma(color.into());
+        println!("{}", format_color(fallback, output_format, use_alpha));
+        return ExitCode::SUCCESS;
+    }
+
     let native_options = eframe::NativeOptions {
         renderer: eframe::Renderer::Glow,
         viewport: ViewportBuilder::default()
@@ -62,7 +69,7 @@ fn main() -> ExitCode {
     let data = Arc::new((color, format, use_alpha));
 
     eframe::run_native(
-        "Oklch Color Picker",
+        "OKLCH Color Picker",
         native_options,
         Box::new(|cc| Ok(Box::new(app::App::new(cc, data)))),
     )

@@ -1,5 +1,4 @@
 [build]
-cargo_profile = "wasm-release"
 no_sri = true
 
 [tools]

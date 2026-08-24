@@ -1,4 +1,4 @@
-# Oklch Color Picker
+# OKLCH Color Picker
 
 [![Crates.io](https://img.shields.io/crates/v/oklch-color-picker)](https://crates.io/crates/oklch-color-picker)
 
@@ -11,12 +11,12 @@ Try the web demo: https://oklch.eerolehtinen.fi/
 ## Features
 
 - Takes an input color as a cli argument and outputs the edited color to stdout
-- Uses a perceptual colorspace (Oklch) to allow intuitive editing
+- Uses a perceptual colorspace (OKLCH) to allow intuitive editing
   - Consists of lightness, chroma and hue
-  - Motivation: [An article by the Oklab creator](https://bottosson.github.io/posts/oklab/)
-  - Oklch uses the same theory as Oklab, but uses parameters that are easier to understand
+  - Motivation: [An article by the OKLab creator](https://bottosson.github.io/posts/oklab/)
+  - OKLCH uses the same theory as OKLab, but uses parameters that are easier to understand
   - L<sub>r</sub> estimate is used instead of L as specified in [another article by the same guy](https://bottosson.github.io/posts/colorpicker/#intermission---a-new-lightness-estimate-for-oklab)
-- Supports many color formats for input and output (editing uses only Oklch):
+- Supports many color formats for input and output (editing uses only OKLCH):
   - Hex (`#RGB`, `#RGBA`, `#RRGGBB`, `#RRGGBBAA`)
   - Other common CSS formats (`rgb(..)`, `hsl(..)`, `oklch(..)`)
   - Hex literal (`0xRRGGBB`, `0xAARRGGBB`)
@@ -34,6 +34,19 @@ If you have **cargo**, you can also install with:
 
 ```sh
 cargo install oklch-color-picker --locked
+```
+
+Convert a color without opening the picker with `--convert-to`:
+
+```sh
+oklch-color-picker "oklch(62% 0.2 250)" --convert-to hex
+```
+
+The input format is auto-detected when possible. Use `--format` for ambiguous
+raw values:
+
+```sh
+oklch-color-picker "0.62, 0.2, 250" --format raw_oklch --convert-to rgb
 ```
 
 ---

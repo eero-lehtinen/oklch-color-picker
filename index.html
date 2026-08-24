@@ -18,7 +18,7 @@
       {
         "@context": "https://schema.org",
         "@type": "WebSite",
-        "name": "Oklch Color Picker",
+        "name": "OKLCH Color Picker",
         "url": "https://oklch.eerolehtinen.fi/"
       }
     </script>
@@ -45,8 +45,10 @@
     <link data-trunk rel="copy-file" href="assets/icon-512.png" />
     <link rel="manifest" href="/manifest.json" />
 
-    <link data-trunk rel="copy-file" href="assets/github-mark.svg" data-target-path="assets"/>
     <link data-trunk rel="copy-file" href="assets/fullscreen.svg" data-target-path="assets"/>
+    <link data-trunk rel="copy-file" href="assets/fullscreen-exit.svg" data-target-path="assets"/>
+    <link data-trunk rel="copy-file" href="assets/info.svg" data-target-path="assets"/>
+    <link data-trunk rel="copy-file" href="assets/link.svg" data-target-path="assets"/>
 
     <style>
       @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&display=swap');
@@ -57,6 +59,7 @@
       :root {
         --bg: #1b1b1b;
         --bg-darker: #0e0e0e;
+        --picker-bg: #080808;
         --fg: #d5d5d5;
 
         font-size: 16px;
@@ -77,28 +80,24 @@
       body {
         background: var(--bg-darker);
         color: var(--fg);
-        display: flex;
-        flex-direction: column;
       }
 
-      /* Allow canvas to fill entire web page: */
       html,
       body {
         position: relative;
-        overflow: hidden;
         margin: 0 !important;
         padding: 0 !important;
-        height: 100%;
+        min-height: 100%;
         width: 100%;
       }
 
-      nav {
+      .site-header {
         width: 100%;
         height: 48px;
         min-height: 48px;
       }
 
-      nav > div {
+      .site-header > div {
         height: 100%;
         width: 100%;
         max-width: 1280px;
@@ -126,53 +125,68 @@
         color: var(--fg);
       }
 
-      a.github {
-        right: 24px;
+      .header-links {
         display: flex;
-        flex-direction: row;
         align-items: center;
         gap: 8px;
       }
 
-      div.github-image {
-        background-image: url("assets/github-mark.svg");
-        background-size: contain;
-        opacity: 0.8;
-        width: 24px;
-        height: 24px;
-      }
-
-      button.fullscreen-button {
-        padding: 6px;
-        left: 24px;
-        display: flex;
-        flex-direction: row;
+      .header-action,
+      .header-action:visited {
+        height: 36px;
+        padding: 5px 9px;
+        display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
-        background: none;
-        color: #999999;
-        border: none;
-        border-radius: 4px;
+        border: 1px solid transparent;
+        border-radius: 5px;
+        background: transparent;
+        color: #b8b8b8;
         font: inherit;
+        line-height: 1;
+        text-decoration: none;
         cursor: pointer;
-        outline: inherit;
       }
 
-      button.fullscreen-button:hover {
-        background: #212121;
+      .header-action:hover {
+        background: #1c1c1c;
+        color: #eeeeee;
+        text-decoration: none;
       }
 
-      button.fullscreen-button:active {
-        background: #3b3b3b;
+      .header-action:active {
+        background: #303030;
+        color: #ffffff;
+        text-decoration: none;
       }
 
-      div.fullscreen-image {
-        background-image: url("assets/fullscreen.svg");
-        background-size: contain;
+      .header-action:focus-visible {
+        outline: 2px solid #6687ed;
+        outline-offset: 2px;
+      }
+
+      div.about-image {
+        background-color: currentColor;
+        -webkit-mask: url("assets/info.svg") center / contain no-repeat;
+        mask: url("assets/info.svg") center / contain no-repeat;
         opacity: 0.8;
         width: 24px;
         height: 24px;
+      }
+
+      div.fullscreen-image {
+        background-color: currentColor;
+        -webkit-mask: url("assets/fullscreen.svg") center / contain no-repeat;
+        mask: url("assets/fullscreen.svg") center / contain no-repeat;
+        opacity: 0.8;
+        width: 24px;
+        height: 24px;
+      }
+
+      .fullscreen-button[aria-pressed="true"] .fullscreen-image {
+        -webkit-mask-image: url("assets/fullscreen-exit.svg");
+        mask-image: url("assets/fullscreen-exit.svg");
       }
 
       a {
@@ -199,9 +213,287 @@
       }
 
       div.canvas-wrapper2 {
+        position: relative;
         width: 100%;
         height: 100%;
         background-color: var(--bg);
+      }
+
+      main {
+        display: block;
+      }
+
+      .picker {
+        display: flex;
+        flex-direction: column;
+        height: calc(100svh - 48px);
+        min-height: 480px;
+        background-color: var(--picker-bg);
+      }
+
+      .content {
+        width: 100%;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 32px 32px 96px;
+      }
+
+      .content section + section {
+        margin-top: 64px;
+      }
+
+      .content h2 {
+        margin: 0 0 16px;
+        color: #eeeeee;
+        font-size: 1.5rem;
+        line-height: 1.25;
+      }
+
+      .content h3 {
+        margin: 0 0 8px;
+        color: #eeeeee;
+        font-size: 1.05rem;
+        line-height: 1.35;
+      }
+
+      .content h2[id],
+      .content h3[id] {
+        scroll-margin-top: 24px;
+      }
+
+      .heading-link,
+      .heading-link:visited {
+        width: 1em;
+        height: 1em;
+        margin-left: 0.3em;
+        display: inline-flex;
+        vertical-align: -0.12em;
+        color: #777777;
+        text-decoration: none;
+        opacity: 0;
+        transition: opacity 120ms ease;
+      }
+
+      .content h2:hover > .heading-link,
+      .content h3:hover > .heading-link {
+        opacity: 0.45;
+      }
+
+      .content h2:hover > .heading-link:hover,
+      .content h3:hover > .heading-link:hover,
+      .heading-link:focus-visible {
+        color: #bbbbbb;
+        text-decoration: none;
+        opacity: 1;
+      }
+
+      .heading-link-icon {
+        width: 100%;
+        height: 100%;
+        background: currentColor;
+        -webkit-mask: url("assets/link.svg") center / contain no-repeat;
+        mask: url("assets/link.svg") center / contain no-repeat;
+      }
+
+      .heading-link:focus-visible {
+        border-radius: 2px;
+        outline: 2px solid #6687ed;
+        outline-offset: 2px;
+      }
+
+      .content p,
+      .content li {
+        line-height: 1.65;
+      }
+
+      .content p {
+        margin: 0;
+      }
+
+      .content p + p {
+        margin-top: 12px;
+      }
+
+      .content ol,
+      .content ul {
+        margin: 0;
+        padding-left: 24px;
+      }
+
+      .content li + li {
+        margin-top: 8px;
+      }
+
+      .content code {
+        border-radius: 3px;
+        background: #242424;
+        padding: 2px 5px;
+        color: #eeeeee;
+        font-family: "IBM Plex Mono", monospace;
+      }
+
+      .format-list {
+        list-style: none;
+        padding: 0 !important;
+      }
+
+      .content .format-list {
+        margin-top: 10px;
+      }
+
+      .format-group {
+        margin-top: 28px;
+      }
+
+      .content .format-group + .format-group {
+        margin-top: 40px;
+      }
+
+      .format-list li {
+        display: grid;
+        grid-template-columns: 28px 200px minmax(0, 1fr);
+        gap: 8px 16px;
+        align-items: center;
+        border-top: 1px solid #303030;
+        padding: 12px 0;
+      }
+
+      .format-list li + li {
+        margin-top: 0;
+      }
+
+      .css-format-list li {
+        grid-template-columns: 28px 100px minmax(0, 1fr);
+      }
+
+      .format-examples {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 20px;
+      }
+
+      .format-list code {
+        color: var(--format-color);
+      }
+
+      .color-swatch {
+        width: 28px;
+        height: 28px;
+        border: 1px solid #ffffff80;
+        border-radius: 4px;
+        background: var(--format-color);
+        box-shadow: 0 0 0 1px #00000060 inset;
+      }
+
+      .format-example {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .syntax-label {
+        color: #9b9b9b;
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .term-with-tooltip {
+        position: relative;
+        display: inline-block;
+      }
+
+      .term-trigger {
+        padding: 0;
+        border: 0;
+        border-bottom: 1px dotted currentColor;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        line-height: inherit;
+        cursor: help;
+      }
+
+      .term-trigger:hover,
+      .term-trigger:focus-visible {
+        color: #eeeeee;
+        border-bottom-style: solid;
+      }
+
+      .term-trigger:focus-visible {
+        border-radius: 2px;
+        outline: 2px solid #6687ed;
+        outline-offset: 2px;
+      }
+
+      .term-tooltip {
+        position: absolute;
+        z-index: 10;
+        bottom: calc(100% + 8px);
+        left: 50%;
+        width: 320px;
+        padding: 10px 12px;
+        border: 1px solid #444444;
+        border-radius: 5px;
+        background: #292929;
+        box-shadow: 0 6px 18px #00000080;
+        color: #eeeeee;
+        font-size: 0.85rem;
+        font-weight: 400;
+        line-height: 1.45;
+        text-align: left;
+        transform: translateX(-50%);
+        visibility: hidden;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .term-tooltip-paragraph {
+        display: block;
+      }
+
+      .term-tooltip-paragraph + .term-tooltip-paragraph {
+        margin-top: 8px;
+      }
+
+      .term-trigger:hover + .term-tooltip,
+      .term-trigger:focus-visible + .term-tooltip {
+        visibility: visible;
+        opacity: 1;
+      }
+
+      .content-lede {
+        max-width: 780px;
+        font-size: 1.1rem;
+      }
+
+      .section-marker {
+        margin-bottom: 32px !important;
+        text-align: center;
+        color: #777777;
+        font-size: 1.1rem;
+        font-weight: 500;
+        /* letter-spacing: 0.04em; */
+        text-transform: uppercase;
+      }
+
+      .faq-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 32px 48px;
+      }
+
+      .page-footer {
+        border-top: 1px solid #303030;
+        margin-top: 72px;
+        padding-top: 24px;
+        color: #a8a8a8;
+        line-height: 1.6;
+      }
+
+      #guide {
+        scroll-margin-top: 24px;
       }
       @media (min-width: 1000px) {
         div.canvas-wrapper2.small {
@@ -220,8 +512,43 @@
 
       @media (max-width: 999px) {
         button.fullscreen-button {
-          max-width: 0px;
           visibility: hidden;
+        }
+      }
+
+      @media (max-width: 700px) {
+        .site-header > div {
+          padding: 0 16px;
+        }
+
+        .header-links {
+          gap: 12px;
+        }
+
+        .content {
+          padding: 28px 20px 72px;
+        }
+
+        .faq-grid {
+          grid-template-columns: 1fr;
+          gap: 48px;
+        }
+
+        .format-list li {
+          grid-template-columns: 28px minmax(0, 1fr);
+        }
+
+        .format-examples {
+          grid-column: 2;
+        }
+
+        .term-tooltip {
+          position: fixed;
+          right: 20px;
+          bottom: 20px;
+          left: 20px;
+          width: auto;
+          transform: none;
         }
       }
 
@@ -242,12 +569,6 @@
         font-size: 24px;
         font-family: Ubuntu-Light, Helvetica, sans-serif;
         text-align: center;
-      }
-
-      @media (max-width: 600px) {
-        .hide-small {
-          display: none;
-        }
       }
 
       /* ---------------------------------------------- */
@@ -283,36 +604,462 @@
   </head>
 
   <body>
-    <nav>
+    <header class="site-header">
       <div>
-        <button type="button" class="fullscreen-button" onclick="toggleZoom()">
-          <div class="fullscreen-image"></div>
-          <span>Zoom</span>
+        <button
+          type="button"
+          class="header-action fullscreen-button"
+          aria-pressed="false"
+          onclick="toggleZoom()"
+        >
+          <div class="fullscreen-image" aria-hidden="true"></div>
+          <span class="header-action-label">Zoom</span>
         </button>
         <div class="title">
-          <img src="icon-192.png" width="22" height="22" alt="Oklch Color Picker" />
-          <h1>Oklch Color Picker</h1>
+          <img src="icon-192.png" width="22" height="22" alt="" />
+          <h1 id="page-title">OKLCH Color Picker</h1>
         </div>
-        <a
-          href="https://github.com/eero-lehtinen/oklch-color-picker"
-          class="github"
-          >
-          <span class="hide-small">View source</span>
-          <div class="github-image"></div>
-        </a>
+        <nav class="header-links" aria-label="Page links">
+          <a href="#guide" class="header-action">
+            <div class="about-image" aria-hidden="true"></div>
+            <span>Guide</span>
+          </a>
+        </nav>
       </div>
-    </nav>
+    </header>
 
-    <div class="canvas-wrapper">
-      <div class="canvas-wrapper2 small">
-        <canvas id="the_canvas_id"></canvas>
+    <main>
+      <section class="picker" aria-labelledby="page-title">
+        <div class="canvas-wrapper">
+          <div class="canvas-wrapper2 small">
+            <canvas id="the_canvas_id">
+              Use the controls in the
+              <a href="#guide">OKLCH color picker guide</a> if your browser
+              cannot display the interactive picker.
+            </canvas>
+            <div class="centered" id="loading_text">
+              <p style="font-size: 16px">Loading…</p>
+              <div class="lds-dual-ring"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="content" id="guide">
+        <section aria-labelledby="overview">
+          <p class="section-marker">Color picker guide</p>
+          <h2 id="overview">
+            Pick and convert OKLCH colors<a
+              class="heading-link"
+              href="#overview"
+              aria-label="Link to this section"
+              ><span class="heading-link-icon" aria-hidden="true"></span></a
+            >
+          </h2>
+          <p class="content-lede">
+            Choose colors with two perceptual, OKLab-based editing models:
+            OKL<sub>r</sub>CH for lightness, chroma, and hue, or OKHSV for
+            familiar saturation and value controls. Copy the result as HEX,
+            RGB, HSL, OKLCH, or raw component values. The picker supports alpha
+            transparency and creates sRGB fallbacks for out-of-gamut colors.
+            Color processing happens locally in your browser.
+          </p>
+        </section>
+
+        <section aria-labelledby="usage">
+          <h2 id="usage">
+            How to use the color picker<a
+              class="heading-link"
+              href="#usage"
+              aria-label="Link to this section"
+              ><span class="heading-link-icon" aria-hidden="true"></span></a
+            >
+          </h2>
+          <ol>
+            <li>
+              Choose <strong>OKL<sub>r</sub>CH</strong> for direct control over
+              perceptual lightness, chroma, and hue, or
+              <strong>OKHSV</strong> for familiar hue-saturation-value controls
+              that stay within sRGB.
+            </li>
+            <li>
+              Select a color with the two-dimensional picker and sliders, or
+              enter exact component values.
+            </li>
+            <li>
+              Compare <strong>Previous Color</strong>, which keeps the color
+              you started with, against <strong>New Color</strong>, which shows
+              your current edits.
+            </li>
+            <li>
+              Choose an output format and include an alpha value when needed.
+            </li>
+            <li>
+              Click <strong>Copy to clipboard</strong> or press
+              <kbd>C</kbd> to copy the result.
+            </li>
+          </ol>
+        </section>
+
+        <section aria-labelledby="formats">
+          <h2 id="formats">
+            Input and output formats<a
+              class="heading-link"
+              href="#formats"
+              aria-label="Link to this section"
+              ><span class="heading-link-icon" aria-hidden="true"></span></a
+            >
+          </h2>
+          <p>
+            The format menu controls how <strong>New Color</strong> is parsed
+            and how the current color is copied. Switching formats changes its
+            text representation, not the color or its OKL<sub>r</sub>CH or
+            OKHSV editing controls.
+          </p>
+          <section class="format-group" aria-labelledby="css-formats">
+            <h3 id="css-formats">
+              CSS colors<a
+                class="heading-link"
+                href="#css-formats"
+                aria-label="Link to this section"
+                ><span class="heading-link-icon" aria-hidden="true"></span></a
+              >
+            </h3>
+            <p>
+              Use modern space-separated RGB and HSL for current CSS. The
+              comma-separated legacy variants provide compatibility with older
+              code and tools.
+            </p>
+            <ul class="format-list css-format-list">
+              <li style="--format-color: oklch(72% 0.13 25 / 80%)">
+                <span class="color-swatch" aria-hidden="true"></span>
+                <strong>HEX</strong>
+                <span class="format-examples"><code>#eb827bcc</code></span>
+              </li>
+              <li style="--format-color: oklch(72% 0.13 65 / 80%)">
+                <span class="color-swatch" aria-hidden="true"></span>
+                <strong>OKLCH</strong>
+                <span class="format-examples">
+                  <code>oklch(72% 0.13 65 / 80%)</code>
+                </span>
+              </li>
+              <li style="--format-color: oklch(72% 0.13 105 / 80%)">
+                <span class="color-swatch" aria-hidden="true"></span>
+                <strong>RGB</strong>
+                <span class="format-examples">
+                  <span class="format-example">
+                    <code>rgb(177 169 58 / 80%)</code>
+                    <span class="syntax-label">Modern</span>
+                  </span>
+                  <span class="format-example">
+                    <code>rgb(177, 169, 58, 80%)</code>
+                    <span class="syntax-label">Legacy</span>
+                  </span>
+                </span>
+              </li>
+              <li style="--format-color: oklch(72% 0.13 145 / 80%)">
+                <span class="color-swatch" aria-hidden="true"></span>
+                <strong>HSL</strong>
+                <span class="format-examples">
+                  <span class="format-example">
+                    <code>hsl(122.6 35.8% 57.8% / 80%)</code>
+                    <span class="syntax-label">Modern</span>
+                  </span>
+                  <span class="format-example">
+                    <code>hsl(122.6, 35.8%, 57.8%, 80%)</code>
+                    <span class="syntax-label">Legacy</span>
+                  </span>
+                </span>
+              </li>
+            </ul>
+          </section>
+
+          <section class="format-group" aria-labelledby="raw-formats">
+            <h3 id="raw-formats">
+              Programming and raw values<a
+                class="heading-link"
+                href="#raw-formats"
+                aria-label="Link to this section"
+                ><span class="heading-link-icon" aria-hidden="true"></span></a
+              >
+            </h3>
+            <p>
+              Raw formats are useful in source code, graphics APIs, shaders,
+              and color calculations.
+            </p>
+            <ul class="format-list">
+            <li style="--format-color: oklch(72% 0.1269 185 / 80%)">
+              <span class="color-swatch" aria-hidden="true"></span>
+              <strong>Hex literal</strong>
+              <span class="format-examples"><code>0xCC00BEAF</code></span>
+            </li>
+            <li style="--format-color: oklch(72% 0.13 225 / 80%)">
+              <span class="color-swatch" aria-hidden="true"></span>
+              <strong
+                >Raw RGB (<span class="term-with-tooltip"
+                  ><button
+                    type="button"
+                    class="term-trigger"
+                    aria-describedby="integer-rgb-tooltip"
+                  >
+                    integer</button
+                  ><span
+                    class="term-tooltip"
+                    id="integer-rgb-tooltip"
+                    role="tooltip"
+                    >Whole-number sRGB components from 0 to 255. Alpha uses the
+                    same range when included.</span
+                  ></span
+                >)</strong
+              >
+              <span class="format-examples">
+                <code>34, 181, 225, 204</code>
+              </span>
+            </li>
+            <li style="--format-color: oklch(72% 0.13 265 / 80%)">
+              <span class="color-swatch" aria-hidden="true"></span>
+              <strong
+                >Raw RGB (<span class="term-with-tooltip"
+                  ><button
+                    type="button"
+                    class="term-trigger"
+                    aria-describedby="float-rgb-tooltip"
+                  >
+                    floating point</button
+                  ><span
+                    class="term-tooltip"
+                    id="float-rgb-tooltip"
+                    role="tooltip"
+                    >sRGB components normalized from 0 to 1 instead of stored
+                    as bytes. Alpha uses the same range when included.</span
+                  ></span
+                >)</strong
+              >
+              <span class="format-examples">
+                <code>0.4879, 0.6354, 0.9651, 0.8</code>
+              </span>
+            </li>
+            <li style="--format-color: oklch(72% 0.13 305 / 80%)">
+              <span class="color-swatch" aria-hidden="true"></span>
+              <strong
+                >Raw RGB (<span class="term-with-tooltip"
+                  ><button
+                    type="button"
+                    class="term-trigger"
+                    aria-describedby="linear-rgb-tooltip"
+                  >
+                    linear</button
+                  ><span
+                    class="term-tooltip"
+                    id="linear-rgb-tooltip"
+                    role="tooltip"
+                    ><span class="term-tooltip-paragraph">
+                      Linear RGB omits gamma correction, so its values are
+                      proportional to light. This makes it useful for blending,
+                      lighting, filtering, and other graphics calculations.
+                    </span>
+                    <span class="term-tooltip-paragraph">
+                      sRGB uses gamma correction: its nonlinear curve gives
+                      darker tones more numeric precision. CSS, common image
+                      formats, and most displays use sRGB values.
+                    </span></span
+                  ></span
+                >)</strong
+              >
+              <span class="format-examples">
+                <code>0.4769, 0.273, 0.7889, 0.8</code>
+              </span>
+            </li>
+            <li style="--format-color: oklch(72% 0.13 345 / 80%)">
+              <span class="color-swatch" aria-hidden="true"></span>
+              <strong>Raw OKLCH</strong>
+              <span class="format-examples">
+                <code>0.72, 0.13, 345.0, 0.8</code>
+              </span>
+            </li>
+            </ul>
+          </section>
+        </section>
+
+        <section aria-labelledby="color-models">
+          <h2 id="color-models">
+            How OKLab, OKLCH, and OKHSV relate<a
+              class="heading-link"
+              href="#color-models"
+              aria-label="Link to this section"
+              ><span class="heading-link-icon" aria-hidden="true"></span></a
+            >
+          </h2>
+          <p>
+            <strong>OKLab</strong> models perceived lightness, chroma, and hue
+            more closely than RGB-derived HSV, reducing unexpected shifts in
+            apparent lightness while editing. It uses a lightness axis
+            (<var>L</var>) and two opponent-color axes (<var>a</var> and
+            <var>b</var>). Björn Ottosson derived the model in
+            <a href="https://bottosson.github.io/posts/oklab/"
+              ><cite>A perceptual color space for image processing</cite></a
+            >.
+          </p>
+          <p>
+            <strong>OKLCH</strong> describes the same OKLab colors with
+            cylindrical coordinates. <var>L</var> remains lightness,
+            <var>C</var> is the distance from the neutral axis, and
+            <var>H</var> is its angle. This makes chroma and hue direct controls;
+            converting between OKLab and OKLCH changes only the coordinates.
+            The tradeoff is an irregular sRGB boundary: some combinations of
+            lightness, chroma, and hue fall outside it.
+          </p>
+          <p>
+            <strong>OKHSV</strong> remaps that boundary into an HSV-like
+            cylinder, keeping every control combination in sRGB and maximum
+            saturation at the edge. The familiar shape sacrifices some
+            perceptual uniformity, but hue tracks perception better than in
+            regular HSV. OKHSV is an editing model, not a CSS format. Ottosson
+            derived it alongside OKHSL in
+            <a href="https://bottosson.github.io/posts/colorpicker/"
+              ><cite>Two new color spaces for color picking</cite></a
+            >.
+          </p>
+        </section>
+
+        <section aria-labelledby="oklrch">
+          <h2 id="oklrch">
+            Why does the picker use OKL<sub>r</sub>CH?<a
+              class="heading-link"
+              href="#oklrch"
+              aria-label="Link to this section"
+              ><span class="heading-link-icon" aria-hidden="true"></span></a
+            >
+          </h2>
+          <p>
+            OKLab has no reference white, making it scale independent across
+            dynamic ranges but less accurate for a fixed-range color picker.
+            OKL<sub>r</sub>CH instead uses the
+            <a
+              href="https://bottosson.github.io/posts/colorpicker/#intermission---a-new-lightness-estimate-for-oklab"
+              ><var>L<sub>r</sub></var> estimate proposed by OKLab's author</a
+            >, which follows CIELab lightness more closely and improves control
+            over dark colors without changing chroma or hue.
+          </p>
+          <p>
+            OKL<sub>r</sub>CH is only an editing model. Before output, the
+            picker converts <var>L<sub>r</sub></var> back to standard OKLCH
+            lightness, so CSS <code>oklch()</code> values remain standard.
+            Switching to OKHSV changes the controls, not the output format.
+          </p>
+        </section>
+
+        <section aria-labelledby="gamut">
+          <h2 id="gamut">
+            Gamut-aware sRGB fallbacks<a
+              class="heading-link"
+              href="#gamut"
+              aria-label="Link to this section"
+              ><span class="heading-link-icon" aria-hidden="true"></span></a
+            >
+          </h2>
+          <p>
+            OKLCH can describe colors that the picker's sRGB preview and output
+            cannot represent. Clamping red, green, and blue separately can
+            cause large hue shifts, so the picker instead keeps hue fixed and
+            reduces chroma only to the sRGB boundary. This follows the
+            <a href="https://bottosson.github.io/posts/gamutclipping/"
+              >OKLab gamut-clipping method described by Ottosson</a
+            >. Colors changed this way are marked <strong>fallback</strong>.
+          </p>
+          <p>
+            Because the renderer and gamut mapping assume sRGB, the picker does
+            not account for wider display gamuts such as Display P3 or Adobe
+            RGB. On these displays, the preview may appear more vivid than
+            intended.
+          </p>
+        </section>
+
+        <section aria-labelledby="workflows">
+          <h2 id="workflows">
+            Designed for precise color workflows<a
+              class="heading-link"
+              href="#workflows"
+              aria-label="Link to this section"
+              ><span class="heading-link-icon" aria-hidden="true"></span></a
+            >
+          </h2>
+          <p>
+            Enter exact values or use arrow keys and Vim-style movement for
+            repeatable adjustments; hold <kbd>Shift</kbd> for larger steps.
+            Number shortcuts focus pickers and sliders, while <kbd>C</kbd>
+            copies the color. Hardware acceleration keeps the high-resolution
+            controls responsive.
+          </p>
+          <p>
+            OKLCH Color Picker is also available as a
+            <a href="https://github.com/eero-lehtinen/oklch-color-picker#installation"
+              >native command-line application</a
+            > for conversions in scripts and terminal workflows.
+          </p>
+          <p>
+            It also powers the
+            <a href="https://github.com/eero-lehtinen/oklch-color-picker.nvim"
+              >OKLCH Color Picker plugin for Neovim</a
+            >, so colors can be selected without leaving the editor.
+          </p>
+        </section>
+
+        <section aria-labelledby="faq">
+          <h2 id="faq">
+            Frequently asked questions<a
+              class="heading-link"
+              href="#faq"
+              aria-label="Link to this section"
+              ><span class="heading-link-icon" aria-hidden="true"></span></a
+            >
+          </h2>
+          <div class="faq-grid">
+            <article>
+              <h3>How do I convert between color formats?</h3>
+              <p>
+                Choose the input format, paste into
+                <strong>New Color</strong>, then choose the output format. The
+                field reformats for copying between any supported formats,
+                including OKLCH to HEX.
+              </p>
+            </article>
+            <article>
+              <h3>What happens to colors outside sRGB?</h3>
+              <p>
+                The picker maps them to an sRGB fallback that preserves hue and
+                as much chroma as possible. The preview and copied output use
+                that fallback.
+              </p>
+            </article>
+            <article>
+              <h3>Does the picker support alpha transparency?</h3>
+              <p>
+                Yes. Alpha can be adjusted with its own slider and included in
+                CSS colors, hexadecimal colors, literals, and raw component
+                values.
+              </p>
+            </article>
+            <article>
+              <h3>Does the picker run locally in the browser?</h3>
+              <p>
+                Yes. WebAssembly processes colors in your browser after the
+                assets load. Entered colors are not sent to a server.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <footer class="page-footer">
+          <p>
+            OKLCH Color Picker is free and open source. View the
+            <a href="https://github.com/eero-lehtinen/oklch-color-picker"
+              >source code on GitHub</a
+            >.
+          </p>
+        </footer>
       </div>
-    </div>
-
-     <div class="centered" id="loading_text"> 
-       <p style="font-size: 16px">Loading…</p> 
-       <div class="lds-dual-ring"></div> 
-     </div> 
+    </main>
 
     <script>
       function preventBrowserShortcuts(event) {
@@ -328,6 +1075,27 @@
       document
         .getElementById("the_canvas_id")
         .addEventListener("keydown", preventBrowserShortcuts);
+
+      // Egui prevents the default wheel action on its canvas. Forward vertical
+      // wheel movement so users can continue scrolling to the page content.
+      document
+        .getElementById("the_canvas_id")
+        .addEventListener(
+          "wheel",
+          (event) => {
+            if (!event.ctrlKey && event.deltaY !== 0) {
+              const scale =
+                event.deltaMode === WheelEvent.DOM_DELTA_LINE
+                  ? 16
+                  : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+                    ? window.innerHeight
+                    : 1;
+              window.scrollBy(0, event.deltaY * scale);
+            }
+          },
+          { passive: true },
+        );
+
       // Do the same thing for the listener input created dynamically by egui.
       const observer = new MutationObserver((mutationsList) => {
         for (const mutation of mutationsList) {
@@ -345,6 +1113,33 @@
         subtree: false
       });
 
+      function scrollToCurrentHash() {
+        const id = window.location.hash.slice(1);
+        if (id) {
+          document.getElementById(id)?.scrollIntoView({ block: "start" });
+        }
+      }
+
+      function preserveInitialHashNavigation() {
+        scrollToCurrentHash();
+
+        const loadingText = document.getElementById("loading_text");
+        if (!loadingText) {
+          return;
+        }
+
+        const hashObserver = new MutationObserver(() => {
+          if (!loadingText.isConnected) {
+            hashObserver.disconnect();
+            requestAnimationFrame(() => requestAnimationFrame(scrollToCurrentHash));
+          }
+        });
+        hashObserver.observe(loadingText.parentNode, { childList: true });
+      }
+
+      window.addEventListener("load", preserveInitialHashNavigation);
+      window.addEventListener("hashchange", scrollToCurrentHash);
+
       let zoomed = localStorage.getItem("zoomed") === "1";
       if (zoomed) {
         zoomed = false;
@@ -353,12 +1148,14 @@
 
       function toggleZoom() {
         const canvasClasses = document.querySelector("div.canvas-wrapper2").classList;
+        const zoomButton = document.querySelector("button.fullscreen-button");
         zoomed = !zoomed;
         if (zoomed) {
           canvasClasses.remove("small");
         } else {
           canvasClasses.add("small");
         }
+        zoomButton.setAttribute("aria-pressed", zoomed ? "true" : "false");
         localStorage.setItem("zoomed", zoomed ? "1" : "0");
       }
 

@@ -476,7 +476,7 @@ pub struct App {
     slider_text_inputs: Vec<Id>,
     format_dropdown: Id,
     done_button: Id,
-    show_settings: bool,
+    show_help: bool,
     focus_something: bool,
     focus_dir: Option<FocusDirection>,
 }
@@ -520,7 +520,7 @@ impl App {
             slider_text_inputs: vec![Id::NULL; 4],
             format_dropdown: Id::NULL,
             done_button: Id::NULL,
-            show_settings: false,
+            show_help: false,
             focus_something: false,
             focus_dir: None,
         }
@@ -932,31 +932,37 @@ impl App {
 
             ui.style_mut().spacing.button_padding = egui::vec2(6.0, 6.0);
             let response = ui.add(
-                egui::Button::new(egui::include_image!("settings.svg"))
+                egui::Button::new(egui::include_image!("help.svg"))
                      .min_size(Vec2::new(ui.available_height(), ui.available_height())),
-            );
+            ).on_hover_text("Help");
             if response.clicked() {
-                self.show_settings = !self.show_settings;
+                self.show_help = !self.show_help;
             }
 
             ui.style_mut().spacing.window_margin = Margin::same(12);
 
-            let mut show_settings = self.show_settings;
+            let mut show_help = self.show_help;
 
-            egui::Window::new("Info")
-                .open(&mut show_settings)
+            egui::Window::new("Help")
+                .open(&mut show_help)
                 .frame(egui::Frame::window(ui.style()))
                 .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
                 .resizable(false)
                 .vscroll(true)
                 .min_width(600.)
-                .min_height(400.)
+                .min_height(500.)
                 .collapsible(false)
                 .show(ui.ctx(), |ui| {
+                    ui.hyperlink_to(
+                        "Open the color picker guide",
+                        "https://oklch.eerolehtinen.fi/#guide",
+                    );
+                    ui.add_space(16.);
+
                     ui.label(RichText::new("Shortcuts").size(20.).strong());
 
                     if self.hotkey(ui, Key::Escape) {
-                        self.show_settings = false;
+                        self.show_help = false;
                     }
 
                     ui.add_space(10.);
@@ -1013,8 +1019,8 @@ impl App {
                     ui.label("Hold Shift to change values in larger steps.");
                 });
 
-            if !show_settings {
-                self.show_settings = false;
+            if !show_help {
+                self.show_help = false;
             }
         });
         if self.format.needs_explicit_alpha() {
