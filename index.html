@@ -126,11 +126,25 @@
         padding: 0px 46px;
       }
 
-      div.title {
+      a.title,
+      a.title:visited {
         display: flex;
         flex-direction: row;
         align-items: center;
         gap: 12px;
+        color: inherit;
+        text-decoration: none;
+      }
+
+      a.title:hover,
+      a.title:active {
+        text-decoration: none;
+      }
+
+      a.title:focus-visible {
+        border-radius: 5px;
+        outline: 2px solid #6687ed;
+        outline-offset: 4px;
       }
 
       h1 {
@@ -230,6 +244,7 @@
 
       div.canvas-wrapper2 {
         position: relative;
+        z-index: 1;
         width: 100%;
         height: 100%;
         background-color: var(--bg);
@@ -240,11 +255,48 @@
       }
 
       .picker {
+        position: relative;
+        isolation: isolate;
         display: flex;
         flex-direction: column;
         height: calc(100svh - 48px);
         min-height: 480px;
         background-color: var(--picker-bg);
+      }
+
+      .scroll-cue {
+        position: absolute;
+        z-index: 0;
+        bottom: 12px;
+        left: 48%;
+        width: 44px;
+        height: 44px;
+        opacity: 1;
+        transform: translateX(-50%);
+      }
+
+      .scroll-cue::before {
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        width: 16px;
+        height: 16px;
+        border-right: 2px solid #555555;
+        border-bottom: 2px solid #555555;
+        transform: translateX(-50%) rotate(45deg);
+        transition: border-color 120ms ease;
+        content: "";
+      }
+
+      .scroll-cue:hover::before,
+      .scroll-cue:focus-visible::before {
+        border-color: #999999;
+      }
+
+      .scroll-cue:focus-visible {
+        border-radius: 5px;
+        outline: 2px solid #6687ed;
+        outline-offset: -4px;
       }
 
       .content {
@@ -508,9 +560,6 @@
         line-height: 1.6;
       }
 
-      #guide {
-        scroll-margin-top: 24px;
-      }
       @media (min-width: 1000px) {
         div.canvas-wrapper2.small {
           max-width: 1300px;
@@ -631,10 +680,10 @@
           <div class="fullscreen-image" aria-hidden="true"></div>
           <span class="header-action-label">Zoom</span>
         </button>
-        <div class="title">
+        <a class="title" href="/">
           <img src="icon-192.png" width="22" height="22" alt="" />
           <h1 id="page-title">OKLCH Color Picker</h1>
-        </div>
+        </a>
         <nav class="header-links" aria-label="Page links">
           <a href="#guide" class="header-action">
             <div class="about-image" aria-hidden="true"></div>
@@ -646,6 +695,11 @@
 
     <main>
       <section class="picker" aria-labelledby="page-title">
+        <a
+          class="scroll-cue"
+          href="#guide"
+          aria-label="Read the color picker guide"
+        ></a>
         <div class="canvas-wrapper">
           <div class="canvas-wrapper2 small">
             <canvas id="the_canvas_id">
@@ -1155,6 +1209,28 @@
 
       window.addEventListener("load", preserveInitialHashNavigation);
       window.addEventListener("hashchange", scrollToCurrentHash);
+
+      const scrollCue = document.querySelector(".scroll-cue");
+      let scrollCueUpdatePending = false;
+
+      function updateScrollCue() {
+        const opacity = Math.max(0, 1 - window.scrollY / 240);
+        scrollCue.style.opacity = opacity;
+        scrollCue.style.pointerEvents = opacity === 0 ? "none" : "auto";
+        scrollCueUpdatePending = false;
+      }
+
+      window.addEventListener(
+        "scroll",
+        () => {
+          if (!scrollCueUpdatePending) {
+            scrollCueUpdatePending = true;
+            requestAnimationFrame(updateScrollCue);
+          }
+        },
+        { passive: true },
+      );
+      updateScrollCue();
 
       let zoomed = localStorage.getItem("zoomed") === "1";
       if (zoomed) {
