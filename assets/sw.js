@@ -15,7 +15,7 @@ async function networkFirst(request) {
 }
 
 const cachePath =
-  /\/$|\/index\.html$|\/oklch-color-picker-(\w|\d)*\.js$|\/oklch-color-picker-(\w|\d)*_bg\.wasm$/;
+  /\/$|\/index\.html$|\/oklch-color-picker-[\w\d]+(?:\.js|_bg\.wasm)$|\/site-[\w\d]+\.(?:css|js)$/;
 
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
