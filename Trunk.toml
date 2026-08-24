@@ -3,3 +3,8 @@ no_sri = true
 
 [tools]
 wasm_opt = "version_131"
+
+[[hooks]]
+stage = "post_build"
+command = "npm"
+command_arguments = ["run", "build:service-worker"]
