@@ -50,7 +50,6 @@ fn make_label(ui: &egui::Ui, name: &str, size: Option<f32>) -> egui::WidgetText 
 
     if let Some(idx) = name.find("Lr") {
         let mut job = egui::text::LayoutJob::default();
-        let text_color = ui.visuals().text_color();
         let subscript_size = base_size * 0.7;
 
         let prefix = &name[..idx + 1];
@@ -62,7 +61,7 @@ fn make_label(ui: &egui::Ui, name: &str, size: Option<f32>) -> egui::WidgetText 
                 0.0,
                 egui::text::TextFormat {
                     font_id: egui::FontId::new(base_size, egui::FontFamily::Proportional),
-                    color: text_color,
+                    color: Color32::PLACEHOLDER,
                     ..Default::default()
                 },
             );
@@ -72,7 +71,7 @@ fn make_label(ui: &egui::Ui, name: &str, size: Option<f32>) -> egui::WidgetText 
             0.0,
             egui::text::TextFormat {
                 font_id: egui::FontId::new(subscript_size, egui::FontFamily::Proportional),
-                color: text_color,
+                color: Color32::PLACEHOLDER,
                 valign: egui::Align::BOTTOM,
                 ..Default::default()
             },
@@ -83,7 +82,7 @@ fn make_label(ui: &egui::Ui, name: &str, size: Option<f32>) -> egui::WidgetText 
                 0.0,
                 egui::text::TextFormat {
                     font_id: egui::FontId::new(base_size, egui::FontFamily::Proportional),
-                    color: text_color,
+                    color: Color32::PLACEHOLDER,
                     ..Default::default()
                 },
             );
