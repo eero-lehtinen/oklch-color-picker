@@ -27,6 +27,7 @@ clap = { version = "4.5.17", features = ["derive"] }
 eframe = { version = "0.36.1", default-features = false, features = [
 	"accesskit",
 	"glow",
+	"links",
 	"wayland",
 	"x11",
 	"persistence",
