@@ -117,9 +117,10 @@ fn advanced_color_enabled(device: &[u16; 32]) -> bool {
             if DisplayConfigGetDeviceInfo(&mut color.header) != 0 {
                 return false;
             }
+            // Set for both HDR and Auto Color Management. The wideColorEnforced
+            // bit is also set on displays without either, so it can't be used.
             const ADVANCED_COLOR_ENABLED: u32 = 1 << 1;
-            const WIDE_COLOR_ENFORCED: u32 = 1 << 2;
-            return color.Anonymous.value & (ADVANCED_COLOR_ENABLED | WIDE_COLOR_ENFORCED) != 0;
+            return color.Anonymous.value & ADVANCED_COLOR_ENABLED != 0;
         }
         false
     }
