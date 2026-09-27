@@ -23,7 +23,7 @@ Try the web demo: https://oklch.eerolehtinen.fi/
   - Any list of 3 or 4 numbers can be used as a color (e.g. `0.5, 0.5, 0.5` or `120, 120, 120, 255`)
 - Hardware accelerated for maximum smoothness and high resolutions
 
-**COLOR ACCURACY NOTE:** 
+**COLOR ACCURACY NOTE:**
 This application doesn't properly interpret display color gamuts wider than sRGB. E.g., if your display uses [Display P3](https://en.wikipedia.org/wiki/DCI-P3) (common with Apple devices) or [Adobe RGB](https://en.wikipedia.org/wiki/Adobe_RGB_color_space), this application shows colors more vibrantly than intended.
 
 ## Installation
