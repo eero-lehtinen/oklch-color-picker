@@ -23,8 +23,7 @@ Try the web demo: https://oklch.eerolehtinen.fi/
   - Any list of 3 or 4 numbers can be used as a color (e.g. `0.5, 0.5, 0.5` or `120, 120, 120, 255`)
 - Hardware accelerated for maximum smoothness and high resolutions
 
-**COLOR ACCURACY NOTE:**
-This application doesn't properly interpret display color gamuts wider than sRGB. E.g., if your display uses [Display P3](https://en.wikipedia.org/wiki/DCI-P3) (common with Apple devices) or [Adobe RGB](https://en.wikipedia.org/wiki/Adobe_RGB_color_space), this application shows colors more vibrantly than intended.
+**Wide-gamut displays:** Colors are picked and shown within the sRGB gamut. OKLCH colors outside it are gamut mapped and marked as fallbacks. On wide-gamut displays, such as [Display P3](https://en.wikipedia.org/wiki/DCI-P3), correct colors rely on system color management, which is available on macOS, on Windows with HDR or Auto Color Management on, and on Wayland compositors with color management, e.g. KDE Plasma 6. Elsewhere, such as on X11, colors can look more vivid than intended.
 
 ## Installation
 
