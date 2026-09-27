@@ -510,7 +510,7 @@ impl App {
             .map(|kind| {
                 (
                     kind,
-                    Arc::new(Mutex::new(GlowProgram::new(gl, &cc.egui_ctx, kind))),
+                    Arc::new(Mutex::new(GlowProgram::new(gl, kind))),
                 )
             })
             .collect();

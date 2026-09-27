@@ -3,7 +3,6 @@ precision highp float;
 out vec4 FragColor;
 
 uniform vec2 size;
-uniform uint supersample;
 uniform uint mode; // 0: oklch, 1: okhsv
 
 in vec2 uv;
@@ -11,24 +10,6 @@ in vec2 uv2;
 
 const float PI = 3.14159265358979323846;
 const float CHROMA_MAX = 0.33;
-
-// Diamond
-// const vec2 sample_positions[4] = vec2[4](
-// 	vec2(0.5, 0.),
-// 	vec2(0., 0.5),
-// 	vec2(-0.5, 0.),
-// 	vec2(0., -0.5)
-// );
-
-
-// Rotated grid (RGSS)
-const vec2 sample_positions[4] = vec2[4](
-	vec2(1./8., 3./8.),
-	vec2(3./8., -1./8.),
-	vec2(-1./8., -3./8.),
-	vec2(-3./8., 1./8.)
-);
-
 
 vec3 to_srgb(vec3 c) {
 	return mix(12.92 * c, 1.055 * pow(c, vec3(0.4166667)) - 0.055, step(0.0031308, c));
@@ -109,6 +90,22 @@ vec4 oklch_to_linear_clamped(vec3 lch) {
 	float a = 1.0 - float(any(lessThan(rgb, vec3(0.0))) || any(greaterThan(rgb, vec3(1.0))));
 
 	return vec4(rgb, a);
+}
+
+// Negative inside the sRGB gamut, positive outside
+float gamut_dist(vec3 rgb) {
+	vec3 d = max(-rgb, rgb - 1.0);
+	return max(d.r, max(d.g, d.b));
+}
+
+// Alpha is the pixel coverage of the gamut, estimated from the screen-space
+// gradient of gamut_dist. Must be called in uniform control flow.
+vec4 oklch_to_linear_antialiased(vec3 lch) {
+	vec3 rgb = oklab_to_linear(oklch_to_oklab(lch));
+	float d = gamut_dist(rgb);
+	float px = length(vec2(dFdx(d), dFdy(d)));
+	float a = clamp(0.5 - d / max(px, 1e-6), 0.0, 1.0);
+	return vec4(clamp(rgb, 0.0, 1.0), a);
 }
 
 

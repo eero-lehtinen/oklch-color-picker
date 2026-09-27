@@ -26,7 +26,6 @@ pub struct GlowProgram {
     kind: ProgramKind,
     program: glow::Program,
     vertex_array: glow::VertexArray,
-    supersample: u32,
 }
 
 fn shader_version() -> &'static str {
@@ -41,7 +40,7 @@ static VERT_SHADER_SOURCE: LazyLock<String> =
     LazyLock::new(|| [shader_version(), include_str!("./shaders/quad_vert.glsl")].concat());
 
 impl GlowProgram {
-    pub fn new(gl: &glow::Context, egui_ctx: &egui::Context, kind: ProgramKind) -> Self {
+    pub fn new(gl: &glow::Context, kind: ProgramKind) -> Self {
         unsafe {
             let program = gl.create_program().unwrap();
             let frag_shader_source_end = match kind {
@@ -106,18 +105,10 @@ impl GlowProgram {
                 .create_vertex_array()
                 .expect("Cannot create vertex array");
 
-            // Don't supersample if resolution is already massive (often on web mobile)
-            let supersample = if egui_ctx.native_pixels_per_point().is_some_and(|p| p > 2.1) {
-                0
-            } else {
-                1
-            };
-
             Self {
                 kind,
                 program,
                 vertex_array,
-                supersample,
             }
         }
     }
@@ -144,7 +135,6 @@ impl GlowProgram {
 
             let uni_loc = |name: &str| gl.get_uniform_location(self.program, name);
 
-            gl.uniform_1_u32(uni_loc("supersample").as_ref(), self.supersample);
             gl.uniform_2_f32(uni_loc("size").as_ref(), size.x, size.y);
             gl.uniform_1_u32(
                 uni_loc("mode").as_ref(),
