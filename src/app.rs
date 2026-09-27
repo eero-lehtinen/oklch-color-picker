@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::gamut::{Okhsva, Oklrcha, clamp_rgba, gamut_clip_preserve_chroma};
 use crate::gl_programs::{GlowProgram, ProgramKind};
+use crate::srgb_tag::{self, SrgbTag};
 use crate::{
     formats::{ColorFormat, format_color, parse_color},
     log_startup,
@@ -480,6 +481,7 @@ pub struct App {
     format: ColorFormat,
     use_alpha: bool,
     programs: HashMap<ProgramKind, Arc<Mutex<GlowProgram>>>,
+    _srgb_tag: SrgbTag,
     input_text: HashMap<u8, String>,
     first_frame: bool,
     frame_end_labels: Vec<(Rect, egui::WidgetText)>,
@@ -504,15 +506,12 @@ impl App {
 
         egui_extras::install_image_loaders(&cc.egui_ctx);
 
+        let srgb_tag = srgb_tag::tag_window(cc);
+
         let gl = cc.gl.as_ref().unwrap();
 
         let programs = ProgramKind::iter_all()
-            .map(|kind| {
-                (
-                    kind,
-                    Arc::new(Mutex::new(GlowProgram::new(gl, kind))),
-                )
-            })
+            .map(|kind| (kind, Arc::new(Mutex::new(GlowProgram::new(gl, kind)))))
             .collect();
 
         log_startup::log("Gl programs created");
@@ -524,6 +523,7 @@ impl App {
             format: data.1,
             use_alpha: data.2,
             programs,
+            _srgb_tag: srgb_tag,
             input_text: Default::default(),
             first_frame: true,
             frame_end_labels: Default::default(),

@@ -13,6 +13,7 @@ mod cli;
 mod formats;
 mod gamut;
 mod gl_programs;
+mod srgb_tag;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> ExitCode {

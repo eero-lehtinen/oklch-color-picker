@@ -60,6 +60,22 @@ tokio = "1.40.0"
 mlua = { version = "0.12.0", features = ["module", "luajit"] }
 image = { version = "0.25.5", default-features = false, features = ["png"] }
 
+[target.'cfg(unix)'.dependencies]
+raw-window-handle = "0.6.2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-app-kit = { version = "0.3.2", default-features = false, features = [
+	"std",
+	"NSColorSpace",
+	"NSResponder",
+	"NSView",
+	"NSWindow",
+] }
+
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+wayland-client = "0.31.15"
+wayland-protocols = { version = "0.32.13", features = ["client", "staging"] }
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = "0.4"
 web-sys = "0.3.70"
