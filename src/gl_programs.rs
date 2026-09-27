@@ -53,15 +53,8 @@ impl GlowProgram {
                 ProgramKind::Final => include_str!("shaders/final_frag.glsl"),
                 _ => panic!("Invalid ProgramKind"),
             };
-            let define = if cfg!(target_arch = "wasm32") {
-                ""
-            } else {
-                "#define OUTPUT_LINEAR_COLOR\n"
-            };
-
             let frag_shader_source = [
                 shader_version(),
-                define,
                 include_str!("shaders/functions.glsl"),
                 frag_shader_source_end,
             ]
@@ -128,9 +121,6 @@ impl GlowProgram {
         size: Vec2,
     ) {
         unsafe {
-            if !cfg!(target_arch = "wasm32") {
-                gl.enable(glow::FRAMEBUFFER_SRGB);
-            }
             gl.use_program(Some(self.program));
 
             let uni_loc = |name: &str| gl.get_uniform_location(self.program, name);

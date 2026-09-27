@@ -57,20 +57,12 @@ vec4 unpremultiply(vec4 color) {
 
 
 vec4 fragOutputNoDither(vec4 linear) {
-#ifdef OUTPUT_LINEAR_COLOR
-    return premultiply(linear);
-#else
     return premultiply(to_srgba(linear));
-#endif
 }
 
 vec4 fragOutput(vec4 linear) {
 	vec3 srgb = to_srgb(linear.rgb) + tpdf_dither(gl_FragCoord.xy);
-#ifdef OUTPUT_LINEAR_COLOR
-	return premultiply(vec4(from_srgb(srgb), linear.a));
-#else
 	return premultiply(vec4(srgb, linear.a));
-#endif
 }
 
 
