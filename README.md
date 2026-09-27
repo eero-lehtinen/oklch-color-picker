@@ -2,7 +2,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/oklch-color-picker)](https://crates.io/crates/oklch-color-picker)
 
-<img width="100%"  alt="image" src="https://github.com/user-attachments/assets/d904a739-5353-4916-9aa0-b26ae85d03d0" />
+<img width="100%" alt="image" src="https://github.com/user-attachments/assets/5507a0a1-7e95-4848-acd9-cd3b799461f0" />
 
 Try the web demo: https://oklch.eerolehtinen.fi/
 
