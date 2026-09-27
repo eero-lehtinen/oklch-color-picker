@@ -1,8 +1,10 @@
+#[cfg(not(target_arch = "wasm32"))]
 use std::sync::LazyLock;
 
 use bevy_color::{Color, ColorToComponents, ColorToPacked, Hsla, LinearRgba, Oklcha, Srgba};
 use clap::ValueEnum;
 use lexical_parse_float::FromLexicalWithOptions;
+#[cfg(not(target_arch = "wasm32"))]
 use strum::IntoEnumIterator;
 use winnow::{
     ModalResult, Parser,
@@ -30,6 +32,7 @@ pub enum ColorFormat {
 }
 
 impl ColorFormat {
+    #[cfg(not(target_arch = "wasm32"))]
     fn is_auto_detectable(&self) -> bool {
         use ColorFormat as F;
         matches!(
