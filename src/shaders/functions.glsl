@@ -11,8 +11,9 @@ in vec2 uv2;
 const float PI = 3.14159265358979323846;
 const float CHROMA_MAX = 0.33;
 
+// max avoids NaN from negative inputs
 vec3 to_srgb(vec3 c) {
-	return mix(12.92 * c, 1.055 * pow(c, vec3(0.4166667)) - 0.055, step(0.0031308, c));
+	return mix(12.92 * c, 1.055 * pow(max(c, 0.0), vec3(0.4166667)) - 0.055, step(0.0031308, c));
 }
 
 vec4 to_srgba(vec4 c) {
@@ -27,10 +28,19 @@ vec4 from_srgba(vec4 c) {
     return vec4(from_srgb(c.rgb), c.a);
 }
 
-vec3 screen_space_dither(vec2 frag_coord) {
-    vec3 dither = vec3(dot(vec2(171.0, 231.0), frag_coord)).xxx;
-    dither = fract(dither.rgb / vec3(103.0, 71.0, 97.0));
-    return (dither - 0.5) / 255.0;
+uvec3 pcg3d(uvec3 v) {
+	v = v * 1664525u + 1013904223u;
+	v.x += v.y * v.z; v.y += v.z * v.x; v.z += v.x * v.y;
+	v ^= v >> 16u;
+	v.x += v.y * v.z; v.y += v.z * v.x; v.z += v.x * v.y;
+	return v;
+}
+
+vec3 tpdf_dither(vec2 frag_coord) {
+	uvec3 h = pcg3d(uvec3(uvec2(frag_coord), 0u));
+	vec3 a = vec3(h & 0xffffu) / 65535.0;
+	vec3 b = vec3(h >> 16u) / 65535.0;
+	return (a + b - 1.0) / 255.0;
 }
 
 vec4 premultiply(vec4 color) {
@@ -55,8 +65,12 @@ vec4 fragOutputNoDither(vec4 linear) {
 }
 
 vec4 fragOutput(vec4 linear) {
-    linear.rgb += screen_space_dither(gl_FragCoord.xy);
-    return fragOutputNoDither(linear);
+	vec3 srgb = to_srgb(linear.rgb) + tpdf_dither(gl_FragCoord.xy);
+#ifdef OUTPUT_LINEAR_COLOR
+	return premultiply(vec4(from_srgb(srgb), linear.a));
+#else
+	return premultiply(vec4(srgb, linear.a));
+#endif
 }
 
 
@@ -116,7 +130,7 @@ vec4 blend_premultiplied(vec4 below, vec4 above) {
 
 vec4 blend(vec4 below, vec4 above) {
 	float a = above.a + below.a * (1. - above.a);
-	return vec4((above.rgb * above.a + below.rgb * below.a * (1. - above.a)) / a, a);
+	return vec4((above.rgb * above.a + below.rgb * below.a * (1. - above.a)) / max(a, 1e-6), a);
 }
 
 float toe_inv(float lr) {
