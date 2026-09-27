@@ -1,8 +1,10 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
+use crate::display_color::DisplayColor;
 use crate::gamut::{Okhsva, Oklrcha, clamp_rgba, gamut_clip_preserve_chroma};
 use crate::gl_programs::{GlowProgram, ProgramKind};
+use crate::output_lut::OutputLut;
 use crate::{
     formats::{ColorFormat, format_color, parse_color},
     log_startup,
@@ -480,6 +482,8 @@ pub struct App {
     format: ColorFormat,
     use_alpha: bool,
     programs: HashMap<ProgramKind, Arc<Mutex<GlowProgram>>>,
+    display_color: DisplayColor,
+    output_lut: OutputLut,
     input_text: HashMap<u8, String>,
     first_frame: bool,
     frame_end_labels: Vec<(Rect, egui::WidgetText)>,
@@ -507,15 +511,13 @@ impl App {
         let gl = cc.gl.as_ref().unwrap();
 
         let programs = ProgramKind::iter_all()
-            .map(|kind| {
-                (
-                    kind,
-                    Arc::new(Mutex::new(GlowProgram::new(gl, kind))),
-                )
-            })
+            .map(|kind| (kind, Arc::new(Mutex::new(GlowProgram::new(gl, kind)))))
             .collect();
 
         log_startup::log("Gl programs created");
+
+        let display_color = DisplayColor::new(cc);
+        let output_lut = OutputLut::new(gl, &display_color.lut());
 
         let AppData { mode } = Self::load(cc.storage);
 
@@ -524,6 +526,8 @@ impl App {
             format: data.1,
             use_alpha: data.2,
             programs,
+            display_color,
+            output_lut,
             input_text: Default::default(),
             first_frame: true,
             frame_end_labels: Default::default(),
@@ -568,7 +572,10 @@ impl App {
 
         let (color_fallback, is_cur_fallback) = gamut_clip(color_rgba);
 
-        let fallback_u8 = Srgba::from(color_fallback).to_u8_array();
+        let fallback_srgb = Srgba::from(color_fallback).to_f32_array_no_alpha();
+        let fallback_u8 =
+            Srgba::from_f32_array_no_alpha(self.display_color.to_display(fallback_srgb))
+                .to_u8_array();
         let fallback_egui_color =
             egui::Color32::from_rgb(fallback_u8[0], fallback_u8[1], fallback_u8[2]);
 
@@ -589,13 +596,14 @@ impl App {
 
         let colors = self.colors.clone();
         let fallbacks = self.fallbacks.clone();
+        let output_lut = self.output_lut.texture();
 
         let cb = egui::PaintCallback {
             rect,
             callback: Arc::new(egui_glow::CallbackFn::new(move |_info, painter| {
                 p.lock()
                     .unwrap()
-                    .paint(painter.gl(), &colors, &fallbacks, size);
+                    .paint(painter.gl(), &colors, &fallbacks, size, output_lut);
             })),
         };
         ui.painter().add(cb);
@@ -1275,7 +1283,13 @@ impl eframe::App for App {
         });
     }
 
-    fn ui(&mut self, ui: &mut egui::Ui, _: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        if self.display_color.update(frame, ui.ctx())
+            && let Some(gl) = frame.gl()
+        {
+            self.output_lut.upload(gl, &self.display_color.lut());
+        }
+
         let ctx = ui.ctx();
         if self.first_frame {
             log_startup::log("First frame start");
@@ -1396,6 +1410,7 @@ impl eframe::App for App {
             for prog in self.programs.values() {
                 prog.lock().unwrap().destroy(gl);
             }
+            self.output_lut.destroy(gl);
         }
     }
 

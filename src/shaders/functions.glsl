@@ -1,6 +1,9 @@
 precision highp float;
+precision highp sampler3D;
 
 out vec4 FragColor;
+
+uniform sampler3D output_lut;
 
 uniform vec2 size;
 uniform uint mode; // 0: oklch, 1: okhsv
@@ -56,13 +59,18 @@ vec4 unpremultiply(vec4 color) {
 }
 
 
+vec3 to_display(vec3 srgb) {
+	float n = float(textureSize(output_lut, 0).x);
+	return texture(output_lut, (srgb * (n - 1.0) + 0.5) / n).rgb;
+}
+
 vec4 fragOutputNoDither(vec4 linear) {
-    return premultiply(to_srgba(linear));
+    return premultiply(vec4(to_display(to_srgb(linear.rgb)), linear.a));
 }
 
 vec4 fragOutput(vec4 linear) {
-	vec3 srgb = to_srgb(linear.rgb) + tpdf_dither(gl_FragCoord.xy);
-	return premultiply(vec4(srgb, linear.a));
+	vec3 c = to_display(to_srgb(linear.rgb)) + tpdf_dither(gl_FragCoord.xy);
+	return premultiply(vec4(c, linear.a));
 }
 
 

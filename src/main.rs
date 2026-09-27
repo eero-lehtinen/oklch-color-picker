@@ -10,9 +10,11 @@ use std::sync::Arc;
 
 mod app;
 mod cli;
+mod display_color;
 mod formats;
 mod gamut;
 mod gl_programs;
+mod output_lut;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> ExitCode {

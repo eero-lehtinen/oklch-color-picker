@@ -2515,15 +2515,20 @@ dependencies = [
  "interprocess",
  "lexical-parse-float",
  "mlua",
+ "moxcms",
+ "objc2-app-kit 0.3.2",
  "once_cell",
  "rand",
+ "raw-window-handle",
  "serde",
  "strum",
  "tokio",
  "wasm-bindgen-futures",
  "web-sys",
  "web-time",
+ "windows-sys 0.61.2",
  "winnow",
+ "x11rb",
 ]
 
 [[package]]

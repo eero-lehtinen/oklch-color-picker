@@ -5,6 +5,7 @@ use eframe::glow::{self, HasContext};
 use egui::Vec2;
 
 use crate::app::{CurrentColors, Fallbacks};
+use crate::output_lut;
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 pub enum ProgramKind {
@@ -94,6 +95,13 @@ impl GlowProgram {
                 gl.delete_shader(shader);
             }
 
+            gl.use_program(Some(program));
+            gl.uniform_1_i32(
+                gl.get_uniform_location(program, "output_lut").as_ref(),
+                output_lut::TEXTURE_UNIT as i32,
+            );
+            gl.use_program(None);
+
             let vertex_array = gl
                 .create_vertex_array()
                 .expect("Cannot create vertex array");
@@ -119,8 +127,13 @@ impl GlowProgram {
         colors: &CurrentColors,
         fallbacks: &Fallbacks,
         size: Vec2,
+        output_lut: glow::Texture,
     ) {
         unsafe {
+            gl.active_texture(glow::TEXTURE0 + output_lut::TEXTURE_UNIT);
+            gl.bind_texture(glow::TEXTURE_3D, Some(output_lut));
+            gl.active_texture(glow::TEXTURE0);
+
             gl.use_program(Some(self.program));
 
             let uni_loc = |name: &str| gl.get_uniform_location(self.program, name);
