@@ -2527,6 +2527,7 @@ dependencies = [
  "wayland-protocols",
  "web-sys",
  "web-time",
+ "windows-sys 0.61.2",
  "winnow",
 ]
 

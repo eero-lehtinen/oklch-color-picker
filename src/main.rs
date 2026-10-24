@@ -1,4 +1,4 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
 
 use bevy_color::{Color, Oklcha};
 use formats::ColorFormat;
@@ -14,6 +14,8 @@ mod formats;
 mod gamut;
 mod gl_programs;
 mod srgb_tag;
+#[cfg(windows)]
+mod windows_console;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> ExitCode {
@@ -21,6 +23,9 @@ fn main() -> ExitCode {
     use cli::Cli;
     use egui::{Vec2, ViewportBuilder};
     use formats::{format_color, parse_color, parse_color_unknown_format};
+
+    #[cfg(windows)]
+    windows_console::attach_parent();
 
     log_startup::init();
 
