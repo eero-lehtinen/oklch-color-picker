@@ -1127,7 +1127,7 @@ impl App {
                 egui::Tooltip::always_open(
                     ui.ctx().clone(),
                     ui.layer_id(),
-                    egui::Id::new("copied_tooltip"),
+                    egui::Id::unique("copied_tooltip"),
                     PopupAnchor::Pointer,
                 )
                 .gap(16.0)
